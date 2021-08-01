@@ -4,10 +4,9 @@ import (
 	"math"
 	"regexp"
 	"strings"
-	"sync"
 	"unicode/utf8"
 
-	"github.com/gdamore/tcell/v2"
+	tcell "github.com/gdamore/tcell/v2"
 )
 
 // InputField is a one-line box (three lines if there is a title) where the
@@ -29,7 +28,7 @@ import (
 //   - Ctrl-W: Delete the last word before the cursor.
 //   - Ctrl-U: Delete the entire line.
 //
-// See https://github.com/rivo/tview/wiki/InputField for an example.
+// See https://github.com/Bios-Marcel/cordless/tview/wiki/InputField for an example.
 type InputField struct {
 	*Box
 
@@ -69,15 +68,8 @@ type InputField struct {
 	// The cursor position as a byte index into the text string.
 	cursorPos int
 
-	// An optional autocomplete function which receives the current text of the
-	// input field and returns a slice of strings to be displayed in a drop-down
-	// selection.
-	autocomplete func(text string) []string
-
-	// The List object which shows the selectable autocomplete entries. If not
-	// nil, the list's main texts represent the current autocomplete entries.
-	autocompleteList      *List
-	autocompleteListMutex sync.Mutex
+	// The number of bytes of the text string skipped ahead while drawing.
+	offset int
 
 	// An optional function which may reject the last character that was entered.
 	accept func(text string, ch rune) bool
@@ -93,9 +85,6 @@ type InputField struct {
 	// A callback function set by the Form class and called when the user leaves
 	// this form item.
 	finished func(tcell.Key)
-
-	fieldX int // The x-coordinate of the input field as determined during the last call to Draw().
-	offset int // The number of bytes of the text string skipped ahead while drawing.
 }
 
 // NewInputField returns a new input field.
@@ -201,72 +190,6 @@ func (i *InputField) SetMaskCharacter(mask rune) *InputField {
 	return i
 }
 
-// SetAutocompleteFunc sets an autocomplete callback function which may return
-// strings to be selected from a drop-down based on the current text of the
-// input field. The drop-down appears only if len(entries) > 0. The callback is
-// invoked in this function and whenever the current text changes or when
-// Autocomplete() is called. Entries are cleared when the user selects an entry
-// or presses Escape.
-func (i *InputField) SetAutocompleteFunc(callback func(currentText string) (entries []string)) *InputField {
-	i.autocomplete = callback
-	i.Autocomplete()
-	return i
-}
-
-// Autocomplete invokes the autocomplete callback (if there is one). If the
-// length of the returned autocomplete entries slice is greater than 0, the
-// input field will present the user with a corresponding drop-down list the
-// next time the input field is drawn.
-//
-// It is safe to call this function from any goroutine. Note that the input
-// field is not redrawn automatically unless called from the main goroutine
-// (e.g. in response to events).
-func (i *InputField) Autocomplete() *InputField {
-	i.autocompleteListMutex.Lock()
-	defer i.autocompleteListMutex.Unlock()
-	if i.autocomplete == nil {
-		return i
-	}
-
-	// Do we have any autocomplete entries?
-	entries := i.autocomplete(i.text)
-	if len(entries) == 0 {
-		// No entries, no list.
-		i.autocompleteList = nil
-		return i
-	}
-
-	// Make a list if we have none.
-	if i.autocompleteList == nil {
-		i.autocompleteList = NewList()
-		i.autocompleteList.ShowSecondaryText(false).
-			SetMainTextColor(Styles.PrimitiveBackgroundColor).
-			SetSelectedTextColor(Styles.PrimitiveBackgroundColor).
-			SetSelectedBackgroundColor(Styles.PrimaryTextColor).
-			SetHighlightFullLine(true).
-			SetBackgroundColor(Styles.MoreContrastBackgroundColor)
-	}
-
-	// Fill it with the entries.
-	currentEntry := -1
-	suffixLength := 9999 // I'm just waiting for the day somebody opens an issue with this number being too small.
-	i.autocompleteList.Clear()
-	for index, entry := range entries {
-		i.autocompleteList.AddItem(entry, "", 0, nil)
-		if strings.HasPrefix(entry, i.text) && len(entry)-len(i.text) < suffixLength {
-			currentEntry = index
-			suffixLength = len(i.text) - len(entry)
-		}
-	}
-
-	// Set the selection if we have one.
-	if currentEntry >= 0 {
-		i.autocompleteList.SetCurrentItem(currentEntry)
-	}
-
-	return i
-}
-
 // SetAcceptanceFunc sets a handler which may reject the last character that was
 // entered (by returning false).
 //
@@ -304,14 +227,17 @@ func (i *InputField) SetFinishedFunc(handler func(key tcell.Key)) FormItem {
 }
 
 // Draw draws this primitive onto the screen.
-func (i *InputField) Draw(screen tcell.Screen) {
-	i.Box.DrawForSubclass(screen, i)
+func (i *InputField) Draw(screen tcell.Screen) bool {
+	res := i.Box.Draw(screen)
+	if !res {
+		return false
+	}
 
 	// Prepare
 	x, y, width, height := i.GetInnerRect()
 	rightLimit := x + width
 	if height < 1 || rightLimit <= x {
-		return
+		return false
 	}
 
 	// Draw label.
@@ -328,7 +254,6 @@ func (i *InputField) Draw(screen tcell.Screen) {
 	}
 
 	// Draw input area.
-	i.fieldX = x
 	fieldWidth := i.fieldWidth
 	if fieldWidth == 0 {
 		fieldWidth = math.MaxInt32
@@ -397,55 +322,34 @@ func (i *InputField) Draw(screen tcell.Screen) {
 		}
 	}
 
-	// Draw autocomplete list.
-	i.autocompleteListMutex.Lock()
-	defer i.autocompleteListMutex.Unlock()
-	if i.autocompleteList != nil {
-		// How much space do we need?
-		lheight := i.autocompleteList.GetItemCount()
-		lwidth := 0
-		for index := 0; index < lheight; index++ {
-			entry, _ := i.autocompleteList.GetItemText(index)
-			width := TaggedStringWidth(entry)
-			if width > lwidth {
-				lwidth = width
-			}
-		}
-
-		// We prefer to drop down but if there is no space, maybe drop up?
-		lx := x
-		ly := y + 1
-		_, sheight := screen.Size()
-		if ly+lheight >= sheight && ly-2 > lheight-ly {
-			ly = y - lheight
-			if ly < 0 {
-				ly = 0
-			}
-		}
-		if ly+lheight >= sheight {
-			lheight = sheight - ly
-		}
-		i.autocompleteList.SetRect(lx, ly, lwidth, lheight)
-		i.autocompleteList.Draw(screen)
+	// Set cursor.
+	if i.focus.HasFocus() {
+		screen.ShowCursor(x+cursorScreenPos, y)
 	}
 
-	// Set cursor.
-	if i.HasFocus() {
-		screen.ShowCursor(x+cursorScreenPos, y)
+	return true
+}
+
+// Insert adds the given argument as additional text at the current cursor
+// position. Rejecting the insertion isn't possible.
+func (i *InputField) Insert(text string) {
+	if text != "" {
+		i.text = i.text[:i.cursorPos] + text + i.text[i.cursorPos:]
+		i.cursorPos += len(text)
+		if i.changed != nil {
+			i.changed(i.text)
+		}
 	}
 }
 
 // InputHandler returns the handler for this primitive.
-func (i *InputField) InputHandler() func(event *tcell.EventKey, setFocus func(p Primitive)) {
-	return i.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) {
+func (i *InputField) InputHandler() InputHandlerFunc {
+	return i.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) *tcell.EventKey {
 		// Trigger changed events.
 		currentText := i.text
 		defer func() {
-			if i.text != currentText {
-				i.Autocomplete()
-				if i.changed != nil {
-					i.changed(i.text)
-				}
+			if i.text != currentText && i.changed != nil {
+				i.changed(i.text)
 			}
 		}()
 
@@ -483,34 +387,7 @@ func (i *InputField) InputHandler() func(event *tcell.EventKey, setFocus func(p 
 			return true
 		}
 
-		// Change the autocomplete selection.
-		autocompleteSelect := func(offset int) {
-			count := i.autocompleteList.GetItemCount()
-			newEntry := i.autocompleteList.GetCurrentItem() + offset
-			if newEntry >= count {
-				newEntry = 0
-			} else if newEntry < 0 {
-				newEntry = count - 1
-			}
-			i.autocompleteList.SetCurrentItem(newEntry)
-			currentText, _ = i.autocompleteList.GetItemText(newEntry) // Don't trigger changed function twice.
-			currentText = stripTags(currentText)
-			i.SetText(currentText)
-		}
-
-		// Finish up.
-		finish := func(key tcell.Key) {
-			if i.done != nil {
-				i.done(key)
-			}
-			if i.finished != nil {
-				i.finished(key)
-			}
-		}
-
 		// Process key event.
-		i.autocompleteListMutex.Lock()
-		defer i.autocompleteListMutex.Unlock()
 		switch key := event.Key(); key {
 		case tcell.KeyRune: // Regular character.
 			if event.Modifiers()&tcell.ModAlt > 0 {
@@ -524,15 +401,11 @@ func (i *InputField) InputHandler() func(event *tcell.EventKey, setFocus func(p 
 					moveWordLeft()
 				case 'f': // Move word right.
 					moveWordRight()
-				default:
-					if !add(event.Rune()) {
-						return
-					}
 				}
 			} else {
 				// Other keys are simply accepted as regular characters.
 				if !add(event.Rune()) {
-					return
+					break
 				}
 			}
 		case tcell.KeyCtrlU: // Delete all.
@@ -554,7 +427,7 @@ func (i *InputField) InputHandler() func(event *tcell.EventKey, setFocus func(p 
 			if i.offset >= i.cursorPos {
 				i.offset = 0
 			}
-		case tcell.KeyDelete, tcell.KeyCtrlD: // Delete character after the cursor.
+		case tcell.KeyDelete: // Delete character after the cursor.
 			iterateString(i.text[i.cursorPos:], func(main rune, comb []rune, textPos, textWidth, screenPos, screenWidth int) bool {
 				i.text = i.text[:i.cursorPos] + i.text[i.cursorPos+textWidth:]
 				return true
@@ -565,82 +438,27 @@ func (i *InputField) InputHandler() func(event *tcell.EventKey, setFocus func(p 
 			} else {
 				moveLeft()
 			}
-		case tcell.KeyCtrlB:
-			moveLeft()
 		case tcell.KeyRight:
 			if event.Modifiers()&tcell.ModAlt > 0 {
 				moveWordRight()
 			} else {
 				moveRight()
 			}
-		case tcell.KeyCtrlF:
-			moveRight()
 		case tcell.KeyHome, tcell.KeyCtrlA:
 			home()
 		case tcell.KeyEnd, tcell.KeyCtrlE:
 			end()
-		case tcell.KeyEnter:
-			if i.autocompleteList != nil {
-				autocompleteSelect(0)
-				i.autocompleteList = nil
-			} else {
-				finish(key)
+		case tcell.KeyEnter, tcell.KeyTab, tcell.KeyBacktab, tcell.KeyEscape: // We're done.
+			if i.done != nil {
+				i.done(key)
 			}
-		case tcell.KeyEscape:
-			if i.autocompleteList != nil {
-				i.autocompleteList = nil
-			} else {
-				finish(key)
+			if i.finished != nil {
+				i.finished(key)
 			}
-		case tcell.KeyTab:
-			if i.autocompleteList != nil {
-				autocompleteSelect(0)
-			} else {
-				finish(key)
-			}
-		case tcell.KeyDown:
-			if i.autocompleteList != nil {
-				autocompleteSelect(1)
-			} else {
-				finish(key)
-			}
-		case tcell.KeyUp, tcell.KeyBacktab: // Autocomplete selection.
-			if i.autocompleteList != nil {
-				autocompleteSelect(-1)
-			} else {
-				finish(key)
-			}
-		}
-	})
-}
-
-// MouseHandler returns the mouse handler for this primitive.
-func (i *InputField) MouseHandler() func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-	return i.WrapMouseHandler(func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-		x, y := event.Position()
-		_, rectY, _, _ := i.GetInnerRect()
-		if !i.InRect(x, y) {
-			return false, nil
+		default:
+			return event
 		}
 
-		// Process mouse event.
-		if action == MouseLeftClick && y == rectY {
-			// Determine where to place the cursor.
-			if x >= i.fieldX {
-				if !iterateString(i.text[i.offset:], func(main rune, comb []rune, textPos int, textWidth int, screenPos int, screenWidth int) bool {
-					if x-i.fieldX < screenPos+screenWidth {
-						i.cursorPos = textPos + i.offset
-						return true
-					}
-					return false
-				}) {
-					i.cursorPos = len(i.text)
-				}
-			}
-			setFocus(i)
-			consumed = true
-		}
-
-		return
+		return nil
 	})
 }

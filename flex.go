@@ -1,7 +1,7 @@
 package tview
 
 import (
-	"github.com/gdamore/tcell/v2"
+	tcell "github.com/gdamore/tcell/v2"
 )
 
 // Configuration values.
@@ -23,7 +23,7 @@ type flexItem struct {
 // distributed along that dimension depends on their layout settings, which is
 // either a fixed length or a proportional length. See AddItem() for details.
 //
-// See https://github.com/rivo/tview/wiki/Flex for an example.
+// See https://github.com/Bios-Marcel/cordless/tview/wiki/Flex for an example.
 type Flex struct {
 	*Box
 
@@ -42,18 +42,18 @@ type Flex struct {
 // direction set to FlexColumn. To add primitives to this layout, see AddItem().
 // To change the direction, see SetDirection().
 //
-// Note that Box, the superclass of Flex, will not clear its contents so that
-// any nil flex items will leave their background unchanged. To clear a Flex's
-// background before any items are drawn, set it to a box with the desired
-// color:
+// Note that Box, the superclass of Flex, will have its background color set to
+// transparent so that any nil flex items will leave their background unchanged.
+// To clear a Flex's background before any items are drawn, set it to the
+// desired color:
 //
-//   flex.Box = NewBox()
+//   flex.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
 func NewFlex() *Flex {
 	f := &Flex{
+		Box:       NewBox().SetBackgroundColor(tcell.ColorDefault),
 		direction: FlexColumn,
 	}
-	f.Box = NewBox()
-	f.Box.dontClear = true
+	f.focus = f
 	return f
 }
 
@@ -86,6 +86,7 @@ func (f *Flex) SetFullScreen(fullScreen bool) *Flex {
 // You can provide a nil value for the primitive. This will still consume screen
 // space but nothing will be drawn.
 func (f *Flex) AddItem(item Primitive, fixedSize, proportion int, focus bool) *Flex {
+	item.SetParent(f)
 	f.items = append(f.items, &flexItem{Item: item, FixedSize: fixedSize, Proportion: proportion, Focus: focus})
 	return f
 }
@@ -101,9 +102,10 @@ func (f *Flex) RemoveItem(p Primitive) *Flex {
 	return f
 }
 
-// Clear removes all items from the container.
-func (f *Flex) Clear() *Flex {
+// RemoveAllItems removes all items in this container.
+func (f *Flex) RemoveAllItems() *Flex {
 	f.items = nil
+
 	return f
 }
 
@@ -121,8 +123,11 @@ func (f *Flex) ResizeItem(p Primitive, fixedSize, proportion int) *Flex {
 }
 
 // Draw draws this primitive onto the screen.
-func (f *Flex) Draw(screen tcell.Screen) {
-	f.Box.DrawForSubclass(screen, f)
+func (f *Flex) Draw(screen tcell.Screen) bool {
+	res := f.Box.Draw(screen)
+	if !res {
+		return false
+	}
 
 	// Calculate size and position of the items.
 
@@ -140,6 +145,12 @@ func (f *Flex) Draw(screen tcell.Screen) {
 		distSize = height
 	}
 	for _, item := range f.items {
+		//Nil can be used for spacing.
+		//See: https://github.com/rivo/tview/wiki/Modal
+		if item.Item != nil && !item.Item.IsVisible() {
+			continue
+		}
+
 		if item.FixedSize > 0 {
 			distSize -= item.FixedSize
 		} else {
@@ -153,15 +164,21 @@ func (f *Flex) Draw(screen tcell.Screen) {
 		pos = y
 	}
 	for _, item := range f.items {
+		//Nil can be used for spacing.
+		//See: https://github.com/rivo/tview/wiki/Modal
+		if item.Item != nil && !item.Item.IsVisible() {
+			if item.Item.GetFocusable().HasFocus() {
+				item.Item.Blur()
+				screen.HideCursor()
+			}
+			continue
+		}
+
 		size := item.FixedSize
 		if size <= 0 {
-			if proportionSum > 0 {
-				size = distSize * item.Proportion / proportionSum
-				distSize -= size
-				proportionSum -= item.Proportion
-			} else {
-				size = 0
-			}
+			size = distSize * item.Proportion / proportionSum
+			distSize -= size
+			proportionSum -= item.Proportion
 		}
 		if item.Item != nil {
 			if f.direction == FlexColumn {
@@ -173,19 +190,21 @@ func (f *Flex) Draw(screen tcell.Screen) {
 		pos += size
 
 		if item.Item != nil {
-			if item.Item.HasFocus() {
+			if item.Item.GetFocusable().HasFocus() {
 				defer item.Item.Draw(screen)
 			} else {
 				item.Item.Draw(screen)
 			}
 		}
 	}
+
+	return true
 }
 
 // Focus is called when this primitive receives focus.
 func (f *Flex) Focus(delegate func(p Primitive)) {
 	for _, item := range f.items {
-		if item.Item != nil && item.Focus {
+		if item.Item != nil && item.Focus && item.Item.IsVisible() {
 			delegate(item.Item)
 			return
 		}
@@ -195,45 +214,9 @@ func (f *Flex) Focus(delegate func(p Primitive)) {
 // HasFocus returns whether or not this primitive has focus.
 func (f *Flex) HasFocus() bool {
 	for _, item := range f.items {
-		if item.Item != nil && item.Item.HasFocus() {
+		if item.Item != nil && item.Item.GetFocusable().HasFocus() && item.Item.IsVisible() {
 			return true
 		}
 	}
 	return false
-}
-
-// MouseHandler returns the mouse handler for this primitive.
-func (f *Flex) MouseHandler() func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-	return f.WrapMouseHandler(func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-		if !f.InRect(event.Position()) {
-			return false, nil
-		}
-
-		// Pass mouse events along to the first child item that takes it.
-		for _, item := range f.items {
-			if item.Item == nil {
-				continue
-			}
-			consumed, capture = item.Item.MouseHandler()(action, event, setFocus)
-			if consumed {
-				return
-			}
-		}
-
-		return
-	})
-}
-
-// InputHandler returns the handler for this primitive.
-func (f *Flex) InputHandler() func(event *tcell.EventKey, setFocus func(p Primitive)) {
-	return f.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) {
-		for _, item := range f.items {
-			if item.Item != nil && item.Item.HasFocus() {
-				if handler := item.Item.InputHandler(); handler != nil {
-					handler(event, setFocus)
-					return
-				}
-			}
-		}
-	})
 }

@@ -1,15 +1,13 @@
 package tview
 
 import (
-	"strings"
-
-	"github.com/gdamore/tcell/v2"
+	tcell "github.com/gdamore/tcell/v2"
 )
 
 // Checkbox implements a simple box for boolean values which can be checked and
 // unchecked.
 //
-// See https://github.com/rivo/tview/wiki/Checkbox for an example.
+// See https://github.com/Bios-Marcel/cordless/tview/wiki/Checkbox for an example.
 type Checkbox struct {
 	*Box
 
@@ -32,9 +30,6 @@ type Checkbox struct {
 	// The text color of the input area.
 	fieldTextColor tcell.Color
 
-	// The string use to display a checked box.
-	checkedString string
-
 	// An optional function which is called when the user changes the checked
 	// state of this checkbox.
 	changed func(checked bool)
@@ -56,7 +51,6 @@ func NewCheckbox() *Checkbox {
 		labelColor:           Styles.SecondaryTextColor,
 		fieldBackgroundColor: Styles.ContrastBackgroundColor,
 		fieldTextColor:       Styles.PrimaryTextColor,
-		checkedString:        "X",
 	}
 }
 
@@ -107,13 +101,6 @@ func (c *Checkbox) SetFieldTextColor(color tcell.Color) *Checkbox {
 	return c
 }
 
-// SetCheckedString sets the string to be displayed when the checkbox is
-// checked (defaults to "X").
-func (c *Checkbox) SetCheckedString(checked string) *Checkbox {
-	c.checkedString = checked
-	return c
-}
-
 // SetFormAttributes sets attributes shared by all form items.
 func (c *Checkbox) SetFormAttributes(labelWidth int, labelColor, bgColor, fieldTextColor, fieldBgColor tcell.Color) FormItem {
 	c.labelWidth = labelWidth
@@ -156,14 +143,17 @@ func (c *Checkbox) SetFinishedFunc(handler func(key tcell.Key)) FormItem {
 }
 
 // Draw draws this primitive onto the screen.
-func (c *Checkbox) Draw(screen tcell.Screen) {
-	c.Box.DrawForSubclass(screen, c)
+func (c *Checkbox) Draw(screen tcell.Screen) bool {
+	shouldDraw := c.Box.Draw(screen)
+	if !shouldDraw {
+		return false
+	}
 
 	// Prepare
 	x, y, width, height := c.GetInnerRect()
 	rightLimit := x + width
 	if height < 1 || rightLimit <= x {
-		return
+		return false
 	}
 
 	// Draw label.
@@ -181,20 +171,20 @@ func (c *Checkbox) Draw(screen tcell.Screen) {
 
 	// Draw checkbox.
 	fieldStyle := tcell.StyleDefault.Background(c.fieldBackgroundColor).Foreground(c.fieldTextColor)
-	if c.HasFocus() {
+	if c.focus.HasFocus() {
 		fieldStyle = fieldStyle.Background(c.fieldTextColor).Foreground(c.fieldBackgroundColor)
 	}
-	checkboxWidth := stringWidth(c.checkedString)
-	checkedString := c.checkedString
+	checkedRune := 'X'
 	if !c.checked {
-		checkedString = strings.Repeat(" ", checkboxWidth)
+		checkedRune = ' '
 	}
-	printWithStyle(screen, checkedString, x, y, 0, checkboxWidth, AlignLeft, fieldStyle, false)
+	screen.SetContent(x, y, checkedRune, nil, fieldStyle)
+	return true
 }
 
 // InputHandler returns the handler for this primitive.
-func (c *Checkbox) InputHandler() func(event *tcell.EventKey, setFocus func(p Primitive)) {
-	return c.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) {
+func (c *Checkbox) InputHandler() InputHandlerFunc {
+	return c.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) *tcell.EventKey {
 		// Process key event.
 		switch key := event.Key(); key {
 		case tcell.KeyRune, tcell.KeyEnter: // Check.
@@ -213,28 +203,7 @@ func (c *Checkbox) InputHandler() func(event *tcell.EventKey, setFocus func(p Pr
 				c.finished(key)
 			}
 		}
-	})
-}
 
-// MouseHandler returns the mouse handler for this primitive.
-func (c *Checkbox) MouseHandler() func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-	return c.WrapMouseHandler(func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-		x, y := event.Position()
-		_, rectY, _, _ := c.GetInnerRect()
-		if !c.InRect(x, y) {
-			return false, nil
-		}
-
-		// Process mouse event.
-		if action == MouseLeftClick && y == rectY {
-			setFocus(c)
-			c.checked = !c.checked
-			if c.changed != nil {
-				c.changed(c.checked)
-			}
-			consumed = true
-		}
-
-		return
+		return event
 	})
 }

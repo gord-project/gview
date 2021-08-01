@@ -3,13 +3,13 @@ package main
 import (
 	"strings"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
+	tcell "github.com/gdamore/tcell/v2"
+	"github.com/yellowsink/gord/tview"
 )
 
 const treeAllCode = `[green]package[white] main
 
-[green]import[white] [red]"github.com/rivo/tview"[white]
+[green]import[white] [red]"github.com/yellowsink/gord/tview"[white]
 
 [green]func[white] [yellow]main[white]() {
 	$$$
@@ -74,7 +74,7 @@ var rootNode = &node{
 			{text: "Tree list starts one level down"},
 			{text: "Works better for lists where no top node is needed"},
 			{text: "Switch to this layout", selected: func() {
-				tree.SetAlign(false).SetTopLevel(1).SetGraphics(true).SetPrefixes(nil)
+				tree.SetAlign(false).SetTopLevel(1).SetGraphics(true).SetBulletCharacters(nil)
 				treeCode.SetText(strings.Replace(treeAllCode, "$$$", treeTopLevelCode, -1))
 			}},
 		}},
@@ -82,7 +82,7 @@ var rootNode = &node{
 			{text: "For trees that are similar to lists"},
 			{text: "Hierarchy shown only in line drawings"},
 			{text: "Switch to this layout", selected: func() {
-				tree.SetAlign(true).SetTopLevel(0).SetGraphics(true).SetPrefixes(nil)
+				tree.SetAlign(true).SetTopLevel(0).SetGraphics(true).SetBulletCharacters(nil)
 				treeCode.SetText(strings.Replace(treeAllCode, "$$$", treeAlignCode, -1))
 			}},
 		}},
@@ -90,7 +90,7 @@ var rootNode = &node{
 			{text: "Best for hierarchical bullet point lists"},
 			{text: "You can define your own prefixes per level"},
 			{text: "Switch to this layout", selected: func() {
-				tree.SetAlign(false).SetTopLevel(1).SetGraphics(false).SetPrefixes([]string{"[red]* ", "[darkcyan]- ", "[darkmagenta]- "})
+				tree.SetAlign(false).SetTopLevel(1).SetGraphics(false).SetBulletCharacters([]string{"[red]* ", "[darkcyan]- ", "[darkmagenta]- "})
 				treeCode.SetText(strings.Replace(treeAllCode, "$$$", treePrefixCode, -1))
 			}},
 		}},
@@ -98,7 +98,7 @@ var rootNode = &node{
 			{text: "Lines illustrate hierarchy"},
 			{text: "Basic indentation"},
 			{text: "Switch to this layout", selected: func() {
-				tree.SetAlign(false).SetTopLevel(0).SetGraphics(true).SetPrefixes(nil)
+				tree.SetAlign(false).SetTopLevel(0).SetGraphics(true).SetBulletCharacters(nil)
 				treeCode.SetText(strings.Replace(treeAllCode, "$$$", treeBasicCode, -1))
 			}},
 		}},

@@ -2,7 +2,7 @@
 package main
 
 import (
-	"github.com/rivo/tview"
+	"github.com/yellowsink/gord/tview"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 			app.Stop()
 		})
 	form.SetBorder(true).SetTitle("Enter some data").SetTitleAlign(tview.AlignLeft)
-	if err := app.SetRoot(form, true).EnableMouse(true).Run(); err != nil {
+	if err := app.SetRoot(form, true).Run(); err != nil {
 		panic(err)
 	}
 }

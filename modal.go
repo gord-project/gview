@@ -1,18 +1,18 @@
 package tview
 
 import (
-	"github.com/gdamore/tcell/v2"
+	tcell "github.com/gdamore/tcell/v2"
 )
 
 // Modal is a centered message window used to inform the user or prompt them
 // for an immediate decision. It needs to have at least one button (added via
 // AddButtons()) or it will never disappear.
 //
-// See https://github.com/rivo/tview/wiki/Modal for an example.
+// See https://github.com/Bios-Marcel/cordless/tview/wiki/Modal for an example.
 type Modal struct {
 	*Box
 
-	// The frame embedded in the modal.
+	// The framed embedded in the modal.
 	frame *Frame
 
 	// The form embedded in the modal's frame.
@@ -49,6 +49,7 @@ func NewModal() *Modal {
 	m.frame.SetBorder(true).
 		SetBackgroundColor(Styles.ContrastBackgroundColor).
 		SetBorderPadding(1, 1, 1, 1)
+	m.focus = m
 	return m
 }
 
@@ -125,12 +126,6 @@ func (m *Modal) ClearButtons() *Modal {
 	return m
 }
 
-// SetFocus shifts the focus to the button with the given index.
-func (m *Modal) SetFocus(index int) *Modal {
-	m.form.SetFocus(index)
-	return m
-}
-
 // Focus is called when this primitive receives focus.
 func (m *Modal) Focus(delegate func(p Primitive)) {
 	delegate(m.form)
@@ -142,7 +137,11 @@ func (m *Modal) HasFocus() bool {
 }
 
 // Draw draws this primitive onto the screen.
-func (m *Modal) Draw(screen tcell.Screen) {
+func (m *Modal) Draw(screen tcell.Screen) bool {
+	if !m.IsVisible() {
+		return false
+	}
+
 	// Calculate the width of this modal.
 	buttonsWidth := 0
 	for _, button := range m.form.buttons {
@@ -173,29 +172,6 @@ func (m *Modal) Draw(screen tcell.Screen) {
 	// Draw the frame.
 	m.frame.SetRect(x, y, width, height)
 	m.frame.Draw(screen)
-}
 
-// MouseHandler returns the mouse handler for this primitive.
-func (m *Modal) MouseHandler() func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-	return m.WrapMouseHandler(func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-		// Pass mouse events on to the form.
-		consumed, capture = m.form.MouseHandler()(action, event, setFocus)
-		if !consumed && action == MouseLeftClick && m.InRect(event.Position()) {
-			setFocus(m)
-			consumed = true
-		}
-		return
-	})
-}
-
-// InputHandler returns the handler for this primitive.
-func (m *Modal) InputHandler() func(event *tcell.EventKey, setFocus func(p Primitive)) {
-	return m.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) {
-		if m.frame.HasFocus() {
-			if handler := m.frame.InputHandler(); handler != nil {
-				handler(event, setFocus)
-				return
-			}
-		}
-	})
+	return true
 }

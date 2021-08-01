@@ -16,8 +16,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
+	tcell "github.com/gdamore/tcell/v2"
+	"github.com/yellowsink/gord/tview"
 )
 
 // Slide is a function which returns the slide's main primitive and its title.
@@ -47,36 +47,33 @@ func main() {
 		End,
 	}
 
-	pages := tview.NewPages()
-
 	// The bottom row has some info on where we are.
 	info := tview.NewTextView().
 		SetDynamicColors(true).
 		SetRegions(true).
-		SetWrap(false).
-		SetHighlightedFunc(func(added, removed, remaining []string) {
-			pages.SwitchToPage(added[0])
-		})
+		SetWrap(false)
 
 	// Create the pages for all slides.
+	currentSlide := 0
+	info.Highlight(strconv.Itoa(currentSlide))
+	pages := tview.NewPages()
 	previousSlide := func() {
-		slide, _ := strconv.Atoi(info.GetHighlights()[0])
-		slide = (slide - 1 + len(slides)) % len(slides)
-		info.Highlight(strconv.Itoa(slide)).
+		currentSlide = (currentSlide - 1 + len(slides)) % len(slides)
+		info.Highlight(strconv.Itoa(currentSlide)).
 			ScrollToHighlight()
+		pages.SwitchToPage(strconv.Itoa(currentSlide))
 	}
 	nextSlide := func() {
-		slide, _ := strconv.Atoi(info.GetHighlights()[0])
-		slide = (slide + 1) % len(slides)
-		info.Highlight(strconv.Itoa(slide)).
+		currentSlide = (currentSlide + 1) % len(slides)
+		info.Highlight(strconv.Itoa(currentSlide)).
 			ScrollToHighlight()
+		pages.SwitchToPage(strconv.Itoa(currentSlide))
 	}
 	for index, slide := range slides {
 		title, primitive := slide(nextSlide)
-		pages.AddPage(strconv.Itoa(index), primitive, true, index == 0)
+		pages.AddPage(strconv.Itoa(index), primitive, true, index == currentSlide)
 		fmt.Fprintf(info, `%d ["%d"][darkcyan]%s[white][""]  `, index+1, index, title)
 	}
-	info.Highlight("0")
 
 	// Create the main layout.
 	layout := tview.NewFlex().
@@ -88,16 +85,14 @@ func main() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyCtrlN {
 			nextSlide()
-			return nil
 		} else if event.Key() == tcell.KeyCtrlP {
 			previousSlide()
-			return nil
 		}
 		return event
 	})
 
 	// Start the application.
-	if err := app.SetRoot(layout, true).EnableMouse(true).Run(); err != nil {
+	if err := app.SetRoot(layout, true).Run(); err != nil {
 		panic(err)
 	}
 }

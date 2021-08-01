@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
+	tcell "github.com/gdamore/tcell/v2"
+	"github.com/yellowsink/gord/tview"
 )
 
 const inputField = `[green]package[white] main
@@ -10,8 +10,8 @@ const inputField = `[green]package[white] main
 [green]import[white] (
     [red]"strconv"[white]
 
-    [red]"github.com/gdamore/tcell/v2"[white]
-    [red]"github.com/rivo/tview"[white]
+    [red]tcell "github.com/gdamore/tcell/v2"[white]
+    [red]"github.com/yellowsink/gord/tview"[white]
 )
 
 [green]func[white] [yellow]main[white]() {

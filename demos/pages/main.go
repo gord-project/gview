@@ -4,7 +4,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/rivo/tview"
+	"github.com/yellowsink/gord/tview"
 )
 
 const pageCount = 5
@@ -29,7 +29,7 @@ func main() {
 				page == 0)
 		}(page)
 	}
-	if err := app.SetRoot(pages, true).EnableMouse(true).Run(); err != nil {
+	if err := app.SetRoot(pages, true).Run(); err != nil {
 		panic(err)
 	}
 }

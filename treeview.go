@@ -1,7 +1,11 @@
 package tview
 
 import (
-	"github.com/gdamore/tcell/v2"
+	"sort"
+	"strings"
+	"time"
+
+	tcell "github.com/gdamore/tcell/v2"
 )
 
 // Tree navigation events.
@@ -13,10 +17,6 @@ const (
 	treeDown
 	treePageUp
 	treePageDown
-	treeParent
-	treeChild
-	treeScrollUp // Move up without changing the selection, even when off screen.
-	treeScrollDown
 )
 
 // TreeNode represents one node in a tree view.
@@ -30,8 +30,15 @@ type TreeNode struct {
 	// The item's text.
 	text string
 
+	// This text is a prefixes in front of the normal text.
+	prefixes []string
+
 	// The text color.
 	color tcell.Color
+
+	blinking bool
+
+	underline bool
 
 	// Whether or not this node can be selected.
 	selectable bool
@@ -45,13 +52,9 @@ type TreeNode struct {
 	// An optional function which is called when the user selects this node.
 	selected func()
 
-	// The hierarchy level (0 for the root, 1 for its children, and so on). This
-	// is only up to date immediately after a call to process() (e.g. via
-	// Draw()).
-	level int
-
 	// Temporary member variables.
 	parent    *TreeNode // The parent node (nil for the root).
+	level     int       // The hierarchy level (0 for the root, 1 for its children, and so on).
 	graphicsX int       // The x-coordinate of the left-most graphics rune.
 	textX     int       // The x-coordinate of the first rune of the text.
 }
@@ -118,6 +121,17 @@ func (n *TreeNode) GetText() string {
 	return n.text
 }
 
+// GetPrefixes returns this node's prefix text.
+func (n *TreeNode) GetPrefixes() []string {
+	return n.prefixes
+}
+
+// GetParent returns a refrence to this nodes parent node or nil if this is a
+// root node.
+func (n *TreeNode) GetParent() *TreeNode {
+	return n.parent
+}
+
 // GetChildren returns this node's children.
 func (n *TreeNode) GetChildren() []*TreeNode {
 	return n.children
@@ -135,23 +149,16 @@ func (n *TreeNode) AddChild(node *TreeNode) *TreeNode {
 	return n
 }
 
-// RemoveChild removes a child node from this node. If the child node cannot be
-// found, nothing happens.
-func (n *TreeNode) RemoveChild(node *TreeNode) *TreeNode {
-	for index, child := range n.children {
-		if child == node {
-			n.children = append(n.children[:index], n.children[index+1:]...)
-			break
-		}
-	}
-	return n
-}
-
 // SetSelectable sets a flag indicating whether this node can be selected by
 // the user.
 func (n *TreeNode) SetSelectable(selectable bool) *TreeNode {
 	n.selectable = selectable
 	return n
+}
+
+// IsSelectable returns wether the node is selectable or not.
+func (n *TreeNode) IsSelectable() bool {
+	return n.selectable
 }
 
 // SetSelectedFunc sets a function which is called when the user selects this
@@ -208,6 +215,44 @@ func (n *TreeNode) SetText(text string) *TreeNode {
 	return n
 }
 
+// AddPrefix sets the node's prefix text which is displayed. Duplicates are
+// ignored.
+func (n *TreeNode) AddPrefix(newPrefix string) *TreeNode {
+	for _, prefix := range n.prefixes {
+		if prefix == newPrefix {
+			return n
+		}
+	}
+
+	n.prefixes = append(n.prefixes, newPrefix)
+	return n
+}
+
+// RemovePrefix removes the given prefix, maintaining the order of the items.
+func (n *TreeNode) RemovePrefix(prefix string) {
+	for removeIndex, oldPrefix := range n.prefixes {
+		if oldPrefix == prefix {
+			n.prefixes = append(n.prefixes[:removeIndex], n.prefixes[removeIndex+1:]...)
+			break
+		}
+	}
+}
+
+// ClearPrefixes removes all prefixes by nulling the underlying array.
+func (n *TreeNode) ClearPrefixes() {
+	n.prefixes = nil
+}
+
+// SortPrefixes sorts all currently set prefixes. This function sin't executed
+// once new prefixes are added.
+func (n *TreeNode) SortPrefixes(lessFunction func(a, b string) bool) {
+	sort.Slice(n.prefixes, func(a, b int) bool {
+		aItem := n.prefixes[a]
+		bItem := n.prefixes[b]
+		return lessFunction(aItem, bItem)
+	})
+}
+
 // GetColor returns the node's color.
 func (n *TreeNode) GetColor() tcell.Color {
 	return n.color
@@ -219,20 +264,20 @@ func (n *TreeNode) SetColor(color tcell.Color) *TreeNode {
 	return n
 }
 
+func (n *TreeNode) SetUnderline(underline bool) {
+	n.underline = underline
+}
+
+func (n *TreeNode) SetBlinking(blinking bool) {
+	n.blinking = blinking
+}
+
 // SetIndent sets an additional indentation for this node's text. A value of 0
 // keeps the text as far left as possible with a minimum of line graphics. Any
 // value greater than that moves the text to the right.
 func (n *TreeNode) SetIndent(indent int) *TreeNode {
 	n.indent = indent
 	return n
-}
-
-// GetLevel returns the node's level within the hierarchy, where 0 corresponds
-// to the root node, 1 corresponds to its children, and so on. This is only
-// guaranteed to be up to date immediately after the tree that contains this
-// node is drawn.
-func (n *TreeNode) GetLevel() int {
-	return n.level
 }
 
 // TreeView displays tree structures. A tree consists of nodes (TreeNode
@@ -251,8 +296,6 @@ func (n *TreeNode) GetLevel() int {
 //   - k, up arrow, left arrow: Move (the selection) up by one node.
 //   - g, home: Move (the selection) to the top.
 //   - G, end: Move (the selection) to the bottom.
-//   - J: Move (the selection) up one level.
-//   - K: Move (the selection) down one level (if it is shown).
 //   - Ctrl-F, page down: Move (the selection) down by one page.
 //   - Ctrl-B, page up: Move (the selection) up by one page.
 //
@@ -268,7 +311,7 @@ func (n *TreeNode) GetLevel() int {
 // using SetPrefixes() for different levels, for example to display hierarchical
 // bullet point lists.
 //
-// See https://github.com/rivo/tview/wiki/TreeView for an example.
+// See https://github.com/Bios-Marcel/cordless/tview/wiki/TreeView for an example.
 type TreeView struct {
 	*Box
 
@@ -286,7 +329,11 @@ type TreeView struct {
 	topLevel int
 
 	// Strings drawn before the nodes, based on their level.
-	prefixes []string
+	bulletCharacters []string
+
+	// This decides whether the selection will cycle when reaching the end
+	// or the beginning of the tree.
+	cycleSelection bool
 
 	// Vertical scroll offset.
 	offsetY int
@@ -307,12 +354,17 @@ type TreeView struct {
 	// An optional function which is called when a tree item was selected.
 	selected func(node *TreeNode)
 
-	// An optional function which is called when the user moves away from this
-	// primitive.
-	done func(key tcell.Key)
-
 	// The visible nodes, top-down, as set by process().
 	nodes []*TreeNode
+
+	// Decides wether it allows usage of vim bindings for navigation.
+	vimBindings bool
+
+	// Decides wether a search and selection will be triggered on rune input.
+	searchOnType bool
+
+	jumpTime   time.Time
+	jumpBuffer string
 }
 
 // NewTreeView returns a new tree view.
@@ -321,6 +373,8 @@ func NewTreeView() *TreeView {
 		Box:           NewBox(),
 		graphics:      true,
 		graphicsColor: Styles.GraphicsColor,
+		searchOnType:  true,
+		vimBindings:   false,
 	}
 }
 
@@ -360,17 +414,17 @@ func (t *TreeView) SetTopLevel(topLevel int) *TreeView {
 	return t
 }
 
-// SetPrefixes defines the strings drawn before the nodes' texts. This is a
-// slice of strings where each element corresponds to a node's hierarchy level,
-// i.e. 0 for the root, 1 for the root's children, and so on (levels will
-// cycle).
+// SetBulletCharacters defines the strings drawn before the nodes' texts.
+// This is a slice of strings where each element corresponds to a node's
+// hierarchy level, i.e. 0 for the root, 1 for the root's children, and
+// so on (levels will cycle).
 //
 // For example, to display a hierarchical list with bullet points:
 //
 //   treeView.SetGraphics(false).
-//     SetPrefixes([]string{"* ", "- ", "x "})
-func (t *TreeView) SetPrefixes(prefixes []string) *TreeView {
-	t.prefixes = prefixes
+//     SetBulletCharacters([]string{"* ", "- ", "x "})
+func (t *TreeView) SetBulletCharacters(prefixes []string) *TreeView {
+	t.bulletCharacters = prefixes
 	return t
 }
 
@@ -379,6 +433,14 @@ func (t *TreeView) SetPrefixes(prefixes []string) *TreeView {
 // If set to false, they will indent with the hierarchy.
 func (t *TreeView) SetAlign(align bool) *TreeView {
 	t.align = align
+	return t
+}
+
+// SetCycleSelection controls the selection behaviour when there is no more
+// node that is eligible for selection. For example if you are index 1 and
+// index 0 isn't selectable anymore, it will try selecting the last index.
+func (t *TreeView) SetCycleSelection(cycleSelection bool) *TreeView {
+	t.cycleSelection = cycleSelection
 	return t
 }
 
@@ -402,17 +464,35 @@ func (t *TreeView) SetChangedFunc(handler func(node *TreeNode)) *TreeView {
 	return t
 }
 
+// SetVimBindingsEnabled decides wether the usage of vim bindings for
+// navigation is possible or not. This setting disables the search on
+// rune input.
+func (t *TreeView) SetVimBindingsEnabled(enabled bool) *TreeView {
+	t.vimBindings = enabled
+
+	if enabled {
+		t.searchOnType = false
+	}
+
+	return t
+}
+
+// SetSearchOnTypeEnabled enables / disables search through the tree on rune
+// input.
+func (t *TreeView) SetSearchOnTypeEnabled(enabled bool) *TreeView {
+	t.searchOnType = enabled
+
+	if enabled {
+		t.vimBindings = false
+	}
+
+	return t
+}
+
 // SetSelectedFunc sets the function which is called when the user selects a
 // node by pressing Enter on the current selection.
 func (t *TreeView) SetSelectedFunc(handler func(node *TreeNode)) *TreeView {
 	t.selected = handler
-	return t
-}
-
-// SetDoneFunc sets a handler which is called whenever the user presses the
-// Escape, Tab, or Backtab key.
-func (t *TreeView) SetDoneFunc(handler func(key tcell.Key)) *TreeView {
-	t.done = handler
 	return t
 }
 
@@ -437,11 +517,8 @@ func (t *TreeView) process() {
 	_, _, _, height := t.GetInnerRect()
 
 	// Determine visible nodes and their placement.
-	var graphicsOffset, maxTextX, parentSelectedIndex int
+	var graphicsOffset, maxTextX int
 	t.nodes = nil
-	if t.root == nil {
-		return
-	}
 	selectedIndex := -1
 	topLevelGraphicsX := -1
 	if t.graphics {
@@ -487,11 +564,6 @@ func (t *TreeView) process() {
 			t.nodes = append(t.nodes, node)
 		}
 
-		// Keep track of the parent of the selected node.
-		if selectedIndex < 0 && node.selectable && len(node.children) > 0 && node.expanded {
-			parentSelectedIndex = len(t.nodes) - 1
-		}
-
 		// Recurse if desired.
 		return node.expanded
 	})
@@ -523,7 +595,20 @@ func (t *TreeView) process() {
 					break MovementSwitch
 				}
 			}
+
+			//Cycle to the bottom if we are at the top.
+			if t.cycleSelection {
+				newSelectedIndex = len(t.nodes)
+				for newSelectedIndex > selectedIndex {
+					newSelectedIndex--
+					if t.nodes[newSelectedIndex].selectable {
+						break MovementSwitch
+					}
+				}
+			}
+
 			newSelectedIndex = selectedIndex
+
 		case treeDown:
 			for newSelectedIndex < len(t.nodes)-1 {
 				newSelectedIndex++
@@ -531,6 +616,18 @@ func (t *TreeView) process() {
 					break MovementSwitch
 				}
 			}
+
+			//Cycle to the top if we are at the bottom.
+			if t.cycleSelection {
+				newSelectedIndex = -1
+				for newSelectedIndex < selectedIndex {
+					newSelectedIndex++
+					if t.nodes[newSelectedIndex].selectable {
+						break MovementSwitch
+					}
+				}
+			}
+
 			newSelectedIndex = selectedIndex
 		case treeHome:
 			for newSelectedIndex = 0; newSelectedIndex < len(t.nodes); newSelectedIndex++ {
@@ -570,16 +667,6 @@ func (t *TreeView) process() {
 				}
 			}
 			newSelectedIndex = selectedIndex
-		case treeParent:
-			newSelectedIndex = parentSelectedIndex
-		case treeChild:
-			for newSelectedIndex < len(t.nodes)-1 {
-				newSelectedIndex++
-				if t.nodes[newSelectedIndex].selectable && t.nodes[newSelectedIndex].parent == t.nodes[selectedIndex] {
-					break MovementSwitch
-				}
-			}
-			newSelectedIndex = selectedIndex
 		}
 		t.currentNode = t.nodes[newSelectedIndex]
 		if newSelectedIndex != selectedIndex {
@@ -591,13 +678,11 @@ func (t *TreeView) process() {
 		selectedIndex = newSelectedIndex
 
 		// Move selection into viewport.
-		if t.movement != treeScrollDown && t.movement != treeScrollUp {
-			if selectedIndex-t.offsetY >= height {
-				t.offsetY = selectedIndex - height + 1
-			}
-			if selectedIndex < t.offsetY {
-				t.offsetY = selectedIndex
-			}
+		if selectedIndex-t.offsetY >= height {
+			t.offsetY = selectedIndex - height + 1
+		}
+		if selectedIndex < t.offsetY {
+			t.offsetY = selectedIndex
 		}
 	} else {
 		// If selection is not visible or selectable, select the first candidate.
@@ -617,21 +702,24 @@ func (t *TreeView) process() {
 }
 
 // Draw draws this primitive onto the screen.
-func (t *TreeView) Draw(screen tcell.Screen) {
-	t.Box.DrawForSubclass(screen, t)
-	if t.root == nil {
-		return
+func (t *TreeView) Draw(screen tcell.Screen) bool {
+	res := t.Box.Draw(screen)
+	if !res {
+		return false
 	}
-	_, totalHeight := screen.Size()
+
+	if t.root == nil {
+		return false
+	}
 
 	t.process()
 
 	// Scroll the tree.
 	x, y, width, height := t.GetInnerRect()
 	switch t.movement {
-	case treeUp, treeScrollUp:
+	case treeUp:
 		t.offsetY--
-	case treeDown, treeScrollDown:
+	case treeDown:
 		t.offsetY++
 	case treeHome:
 		t.offsetY = 0
@@ -657,7 +745,7 @@ func (t *TreeView) Draw(screen tcell.Screen) {
 	lineStyle := tcell.StyleDefault.Background(t.backgroundColor).Foreground(t.graphicsColor)
 	for index, node := range t.nodes {
 		// Skip invisible parts.
-		if posY >= y+height+1 || posY >= totalHeight {
+		if posY >= y+height+1 {
 			break
 		}
 		if index < t.offsetY {
@@ -676,7 +764,7 @@ func (t *TreeView) Draw(screen tcell.Screen) {
 				// Draw a branch if this ancestor is not a last child.
 				if ancestor.parent.children[len(ancestor.parent.children)-1] != ancestor {
 					if posY-1 >= y && ancestor.textX > ancestor.graphicsX {
-						PrintJoinedSemigraphics(screen, x+ancestor.graphicsX, posY-1, Borders.Vertical, lineStyle)
+						PrintJoinedSemigraphics(screen, x+ancestor.graphicsX, posY-1, Borders.Vertical, t.graphicsColor)
 					}
 					if posY < y+height {
 						screen.SetContent(x+ancestor.graphicsX, posY, Borders.Vertical, nil, lineStyle)
@@ -688,7 +776,7 @@ func (t *TreeView) Draw(screen tcell.Screen) {
 			if node.textX > node.graphicsX && node.graphicsX < width {
 				// Connect to the node above.
 				if posY-1 >= y && t.nodes[index-1].graphicsX <= node.graphicsX && t.nodes[index-1].textX > node.graphicsX {
-					PrintJoinedSemigraphics(screen, x+node.graphicsX, posY-1, Borders.TopLeft, lineStyle)
+					PrintJoinedSemigraphics(screen, x+node.graphicsX, posY-1, Borders.TopLeft, t.graphicsColor)
 				}
 
 				// Join this node.
@@ -704,61 +792,68 @@ func (t *TreeView) Draw(screen tcell.Screen) {
 		// Draw the prefix and the text.
 		if node.textX < width && posY < y+height {
 			// Prefix.
-			var prefixWidth int
-			if len(t.prefixes) > 0 {
-				_, prefixWidth = Print(screen, t.prefixes[(node.level-t.topLevel)%len(t.prefixes)], x+node.textX, posY, width-node.textX, AlignLeft, node.color)
+			var bulletCharacterWidth int
+			if len(t.bulletCharacters) > 0 {
+				_, bulletCharacterWidth = Print(screen, t.bulletCharacters[(node.level-t.topLevel)%len(t.bulletCharacters)], x+node.textX, posY, width-node.textX, AlignLeft, node.color)
 			}
 
 			// Text.
-			if node.textX+prefixWidth < width {
-				style := tcell.StyleDefault.Background(t.backgroundColor).Foreground(node.color)
-				if node == t.currentNode {
-					style = tcell.StyleDefault.Background(node.color).Foreground(t.backgroundColor)
+			if node.textX+bulletCharacterWidth < width {
+				style := tcell.StyleDefault
+				if !IsVtxxx {
+					style = style.Foreground(node.color)
 				}
-				printWithStyle(screen, node.text, x+node.textX+prefixWidth, posY, 0, width-node.textX-prefixWidth, AlignLeft, style, false)
+				if node == t.currentNode {
+					style = style.Reverse(true)
+				}
+				if node.blinking {
+					style = style.Blink(true)
+				}
+				if node.underline {
+					style = style.Underline(true)
+				}
+				var fullPrefix string
+				for _, prefix := range node.prefixes {
+					fullPrefix += prefix
+				}
+				printWithStyle(screen, fullPrefix+node.text, x+node.textX+bulletCharacterWidth, posY, width-node.textX-bulletCharacterWidth, AlignLeft, style)
 			}
 		}
 
 		// Advance.
 		posY++
 	}
+
+	t.drawOverflow(screen, t.offsetY != 0, (t.offsetY != len(t.nodes)-t.innerHeight) && len(t.nodes) > t.innerHeight)
+
+	return true
 }
 
 // InputHandler returns the handler for this primitive.
-func (t *TreeView) InputHandler() func(event *tcell.EventKey, setFocus func(p Primitive)) {
-	return t.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) {
-		selectNode := func() {
-			node := t.currentNode
-			if node != nil {
-				if t.selected != nil {
-					t.selected(node)
-				}
-				if node.selected != nil {
-					node.selected()
-				}
-			}
-		}
+func (t *TreeView) InputHandler() InputHandlerFunc {
+	return t.WrapInputHandler(t.DefaultInputHandler)
+}
 
-		// Because the tree is flattened into a list only at drawing time, we also
-		// postpone the (selection) movement to drawing time.
-		switch key := event.Key(); key {
-		case tcell.KeyTab, tcell.KeyBacktab, tcell.KeyEscape:
-			if t.done != nil {
-				t.done(key)
-			}
-		case tcell.KeyDown, tcell.KeyRight:
-			t.movement = treeDown
-		case tcell.KeyUp, tcell.KeyLeft:
-			t.movement = treeUp
-		case tcell.KeyHome:
-			t.movement = treeHome
-		case tcell.KeyEnd:
-			t.movement = treeEnd
-		case tcell.KeyPgDn, tcell.KeyCtrlF:
-			t.movement = treePageDown
-		case tcell.KeyPgUp, tcell.KeyCtrlB:
-			t.movement = treePageUp
-		case tcell.KeyRune:
+// DefaultInputHandler handles basic navigation and interaction with the
+// TreeView.
+func (t *TreeView) DefaultInputHandler(event *tcell.EventKey, setFocus func(p Primitive)) *tcell.EventKey {
+	// Because the tree is flattened into a list only at drawing time, we also
+	// postpone the (selection) movement to drawing time.
+	switch key := event.Key(); key {
+	case tcell.KeyTab, tcell.KeyDown, tcell.KeyRight:
+		t.movement = treeDown
+	case tcell.KeyBacktab, tcell.KeyUp, tcell.KeyLeft:
+		t.movement = treeUp
+	case tcell.KeyHome:
+		t.movement = treeHome
+	case tcell.KeyEnd:
+		t.movement = treeEnd
+	case tcell.KeyPgDn, tcell.KeyCtrlF:
+		t.movement = treePageDown
+	case tcell.KeyPgUp, tcell.KeyCtrlB:
+		t.movement = treePageUp
+	case tcell.KeyRune:
+		if t.vimBindings {
 			switch event.Rune() {
 			case 'g':
 				t.movement = treeHome
@@ -766,61 +861,59 @@ func (t *TreeView) InputHandler() func(event *tcell.EventKey, setFocus func(p Pr
 				t.movement = treeEnd
 			case 'j':
 				t.movement = treeDown
-			case 'J':
-				t.movement = treeChild
 			case 'k':
 				t.movement = treeUp
-			case 'K':
-				t.movement = treeParent
-			case ' ':
-				selectNode()
+			default:
+				return event
 			}
-		case tcell.KeyEnter:
-			selectNode()
-		}
+		} else if t.searchOnType {
+			if time.Since(t.jumpTime) > (500 * time.Millisecond) {
+				t.jumpBuffer = ""
+			}
 
-		t.process()
-	})
-}
+			if event.Key() == tcell.KeyRune {
+				t.jumpTime = time.Now()
+				t.jumpBuffer += strings.ToLower(string(event.Rune()))
 
-// MouseHandler returns the mouse handler for this primitive.
-func (t *TreeView) MouseHandler() func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-	return t.WrapMouseHandler(func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-		x, y := event.Position()
-		if !t.InRect(x, y) {
-			return false, nil
-		}
-
-		switch action {
-		case MouseLeftClick:
-			setFocus(t)
-			_, rectY, _, _ := t.GetInnerRect()
-			y += t.offsetY - rectY
-			if y >= 0 && y < len(t.nodes) {
-				node := t.nodes[y]
-				if node.selectable {
-					previousNode := t.currentNode
-					t.currentNode = node
-					if previousNode != node && t.changed != nil {
-						t.changed(node)
-					}
-					if t.selected != nil {
-						t.selected(node)
-					}
-					if node.selected != nil {
-						node.selected()
-					}
+				node := t.FindFirstSelectableNode(t.GetRoot(), t.jumpBuffer)
+				if node != nil {
+					t.SetCurrentNode(node)
 				}
 			}
-			consumed = true
-		case MouseScrollUp:
-			t.movement = treeScrollUp
-			consumed = true
-		case MouseScrollDown:
-			t.movement = treeScrollDown
-			consumed = true
 		}
+	case tcell.KeyEnter:
+		if t.currentNode != nil {
+			if t.selected != nil {
+				t.selected(t.currentNode)
+			}
+			if t.currentNode.selected != nil {
+				t.currentNode.selected()
+			}
+		}
+	default:
+		return event
+	}
 
-		return
-	})
+	t.process()
+	return nil
+}
+
+// FindFirstSelectableNode iterates through the tree from top to bottom, trying
+// to find a node that is selectable and has the given text as its prefix. The
+// search is case-insensitive.
+func (t *TreeView) FindFirstSelectableNode(node *TreeNode, text string) *TreeNode {
+	for _, child := range node.GetChildren() {
+		if len(child.GetChildren()) == 0 {
+			if child.IsSelectable() && strings.HasPrefix(strings.ToLower(child.GetText()), text) {
+				return child
+			}
+		} else {
+			subResult := t.FindFirstSelectableNode(child, text)
+			if subResult != nil {
+				return subResult
+			}
+		}
+	}
+
+	return nil
 }

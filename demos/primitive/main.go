@@ -4,8 +4,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
+	tcell "github.com/gdamore/tcell/v2"
+	"github.com/yellowsink/gord/tview"
 )
 
 // RadioButtons implements a simple primitive for radio button selections.
@@ -24,8 +24,12 @@ func NewRadioButtons(options []string) *RadioButtons {
 }
 
 // Draw draws this primitive onto the screen.
-func (r *RadioButtons) Draw(screen tcell.Screen) {
-	r.Box.DrawForSubclass(screen, r)
+func (r *RadioButtons) Draw(screen tcell.Screen) bool {
+	res := r.Box.Draw(screen)
+	if !res {
+		return false
+	}
+
 	x, y, width, height := r.GetInnerRect()
 
 	for index, option := range r.options {
@@ -39,45 +43,29 @@ func (r *RadioButtons) Draw(screen tcell.Screen) {
 		line := fmt.Sprintf(`%s[white]  %s`, radioButton, option)
 		tview.Print(screen, line, x, y+index, width, tview.AlignLeft, tcell.ColorYellow)
 	}
+
+	return true
 }
 
 // InputHandler returns the handler for this primitive.
-func (r *RadioButtons) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
-	return r.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+func (r *RadioButtons) InputHandler() tview.InputHandlerFunc {
+	return r.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p tview.Primitive)) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyUp:
 			r.currentOption--
 			if r.currentOption < 0 {
 				r.currentOption = 0
 			}
+			return nil
 		case tcell.KeyDown:
 			r.currentOption++
 			if r.currentOption >= len(r.options) {
 				r.currentOption = len(r.options) - 1
 			}
-		}
-	})
-}
-
-// MouseHandler returns the mouse handler for this primitive.
-func (r *RadioButtons) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
-	return r.WrapMouseHandler(func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
-		x, y := event.Position()
-		_, rectY, _, _ := r.GetInnerRect()
-		if !r.InRect(x, y) {
-			return false, nil
+			return nil
 		}
 
-		if action == tview.MouseLeftClick {
-			setFocus(r)
-			index := y - rectY
-			if index >= 0 && index < len(r.options) {
-				r.currentOption = index
-				consumed = true
-			}
-		}
-
-		return
+		return event
 	})
 }
 
@@ -86,7 +74,7 @@ func main() {
 	radioButtons.SetBorder(true).
 		SetTitle("Radio Button Demo").
 		SetRect(0, 0, 30, 5)
-	if err := tview.NewApplication().SetRoot(radioButtons, false).EnableMouse(true).Run(); err != nil {
+	if err := tview.NewApplication().SetRoot(radioButtons, false).Run(); err != nil {
 		panic(err)
 	}
 }

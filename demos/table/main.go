@@ -4,8 +4,8 @@ package main
 import (
 	"strings"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
+	tcell "github.com/gdamore/tcell/v2"
+	"github.com/yellowsink/gord/tview"
 )
 
 func main() {
@@ -39,7 +39,7 @@ func main() {
 		table.GetCell(row, column).SetTextColor(tcell.ColorRed)
 		table.SetSelectable(false, false)
 	})
-	if err := app.SetRoot(table, true).EnableMouse(true).Run(); err != nil {
+	if err := app.SetRoot(table, true).Run(); err != nil {
 		panic(err)
 	}
 }

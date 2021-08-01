@@ -1,12 +1,12 @@
 package tview
 
 import (
-	"github.com/gdamore/tcell/v2"
+	tcell "github.com/gdamore/tcell/v2"
 )
 
 // Button is labeled box that triggers an action when selected.
 //
-// See https://github.com/rivo/tview/wiki/Button for an example.
+// See https://github.com/Bios-Marcel/cordless/tview/wiki/Button for an example.
 type Button struct {
 	*Box
 
@@ -34,13 +34,22 @@ type Button struct {
 func NewButton(label string) *Button {
 	box := NewBox().SetBackgroundColor(Styles.ContrastBackgroundColor)
 	box.SetRect(0, 0, TaggedStringWidth(label)+4, 1)
-	return &Button{
+	button := &Button{
 		Box:                      box,
 		label:                    label,
 		labelColor:               Styles.PrimaryTextColor,
 		labelColorActivated:      Styles.InverseTextColor,
 		backgroundColorActivated: Styles.PrimaryTextColor,
 	}
+	button.SetMouseHandler(func(event *tcell.EventMouse) bool {
+		if event.Buttons() == tcell.Button1 {
+			button.selected()
+			return true
+		}
+
+		return false
+	})
+	return button
 }
 
 // SetLabel sets the button text.
@@ -93,18 +102,29 @@ func (b *Button) SetBlurFunc(handler func(key tcell.Key)) *Button {
 }
 
 // Draw draws this primitive onto the screen.
-func (b *Button) Draw(screen tcell.Screen) {
+func (b *Button) Draw(screen tcell.Screen) bool {
 	// Draw the box.
-	borderColor := b.GetBorderColor()
-	backgroundColor := b.GetBackgroundColor()
-	if b.HasFocus() {
-		b.SetBackgroundColor(b.backgroundColorActivated)
-		b.SetBorderColor(b.labelColorActivated)
+	borderColor := b.borderColor
+	backgroundColor := b.backgroundColor
+	if IsVtxxx {
+		b.reverse = false
+	}
+	if b.focus.HasFocus() {
+		b.backgroundColor = b.backgroundColorActivated
+		b.borderColor = b.labelColorActivated
+		if IsVtxxx {
+			b.reverse = true
+		}
 		defer func() {
-			b.SetBorderColor(borderColor)
+			b.borderColor = borderColor
 		}()
 	}
-	b.Box.DrawForSubclass(screen, b)
+
+	res := b.Box.Draw(screen)
+	if !res {
+		return false
+	}
+
 	b.backgroundColor = backgroundColor
 
 	// Draw label.
@@ -112,46 +132,32 @@ func (b *Button) Draw(screen tcell.Screen) {
 	if width > 0 && height > 0 {
 		y = y + height/2
 		labelColor := b.labelColor
-		if b.HasFocus() {
+		if b.focus.HasFocus() {
 			labelColor = b.labelColorActivated
 		}
 		Print(screen, b.label, x, y, width, AlignCenter, labelColor)
 	}
+
+	return true
 }
 
 // InputHandler returns the handler for this primitive.
-func (b *Button) InputHandler() func(event *tcell.EventKey, setFocus func(p Primitive)) {
-	return b.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) {
+func (b *Button) InputHandler() InputHandlerFunc {
+	return b.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p Primitive)) *tcell.EventKey {
 		// Process key event.
 		switch key := event.Key(); key {
 		case tcell.KeyEnter: // Selected.
 			if b.selected != nil {
 				b.selected()
 			}
+			return nil
 		case tcell.KeyBacktab, tcell.KeyTab, tcell.KeyEscape: // Leave. No action.
 			if b.blur != nil {
 				b.blur(key)
 			}
-		}
-	})
-}
-
-// MouseHandler returns the mouse handler for this primitive.
-func (b *Button) MouseHandler() func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-	return b.WrapMouseHandler(func(action MouseAction, event *tcell.EventMouse, setFocus func(p Primitive)) (consumed bool, capture Primitive) {
-		if !b.InRect(event.Position()) {
-			return false, nil
+			return nil
 		}
 
-		// Process mouse event.
-		if action == MouseLeftClick {
-			setFocus(b)
-			if b.selected != nil {
-				b.selected()
-			}
-			consumed = true
-		}
-
-		return
+		return event
 	})
 }

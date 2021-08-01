@@ -1,7 +1,7 @@
 // Demo code for the Button primitive.
 package main
 
-import "github.com/rivo/tview"
+import "github.com/yellowsink/gord/tview"
 
 func main() {
 	app := tview.NewApplication()
@@ -9,7 +9,7 @@ func main() {
 		app.Stop()
 	})
 	button.SetBorder(true).SetRect(0, 0, 22, 3)
-	if err := app.SetRoot(button, false).EnableMouse(true).Run(); err != nil {
+	if err := app.SetRoot(button, false).Run(); err != nil {
 		panic(err)
 	}
 }

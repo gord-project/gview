@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
+	tcell "github.com/gdamore/tcell/v2"
+	"github.com/yellowsink/gord/tview"
 )
 
 // Show a navigable tree view of the current directory.
@@ -56,7 +56,7 @@ func main() {
 		}
 	})
 
-	if err := tview.NewApplication().SetRoot(tree, true).EnableMouse(true).Run(); err != nil {
+	if err := tview.NewApplication().SetRoot(tree, true).Run(); err != nil {
 		panic(err)
 	}
 }

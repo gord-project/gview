@@ -2,11 +2,12 @@ package tview
 
 import (
 	"math"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
 
-	"github.com/gdamore/tcell/v2"
+	tcell "github.com/gdamore/tcell/v2"
 	runewidth "github.com/mattn/go-runewidth"
 	"github.com/rivo/uniseg"
 )
@@ -17,6 +18,18 @@ const (
 	AlignCenter
 	AlignRight
 )
+
+// IsVtxxx indicates whether the TERM environment variable matches that of a
+// VTxxx terminal, for example VT320.
+var IsVtxxx = checkVT()
+
+func checkVT() bool {
+	isVtxxx, err := regexp.MatchString("(vt)[0-9]+", os.Getenv("TERM"))
+	if err != nil {
+		panic(err)
+	}
+	return isVtxxx
+}
 
 // Common regular expressions.
 var (
@@ -52,6 +65,9 @@ var (
 
 // Package initialization.
 func init() {
+	// We'll use zero width joiners.
+	runewidth.ZeroWidthJoiner = true
+
 	// Initialize the predefined input field handlers.
 	InputFieldInteger = func(text string, ch rune) bool {
 		if text == "-" {
@@ -110,16 +126,23 @@ func styleFromTag(fgColor, bgColor, attributes string, tagSubstrings []string) (
 	return fgColor, bgColor, attributes
 }
 
-// overlayStyle calculates a new style based on "style" and applying tag-based
-// colors/attributes to it (see also styleFromTag()).
-func overlayStyle(style tcell.Style, fgColor, bgColor, attributes string) tcell.Style {
-	_, _, defAttr := style.Decompose()
+// overlayStyle mixes a background color with a foreground color (fgColor),
+// a (possibly new) background color (bgColor), and style attributes, and
+// returns the resulting style. For a definition of the colors and attributes,
+// see styleFromTag(). Reset instructions cause the corresponding part of the
+// default style to be used.
+func overlayStyle(background tcell.Color, defaultStyle tcell.Style, fgColor, bgColor, attributes string) tcell.Style {
+	defFg, defBg, defAttr := defaultStyle.Decompose()
+	style := defaultStyle.Background(background)
 
-	if fgColor != "" && fgColor != "-" {
+	style = style.Foreground(defFg)
+	if fgColor != "" {
 		style = style.Foreground(tcell.GetColor(fgColor))
 	}
 
-	if bgColor != "" && bgColor != "-" {
+	if bgColor == "-" || bgColor == "" && defBg != tcell.ColorDefault {
+		style = style.Background(defBg)
+	} else if bgColor != "" {
 		style = style.Background(tcell.GetColor(bgColor))
 	}
 
@@ -184,31 +207,32 @@ func decomposeString(text string, findColors, findRegions bool) (colorIndices []
 	}
 
 	// Make a (sorted) list of all tags.
-	allIndices := make([][3]int, 0, len(colorIndices)+len(regionIndices)+len(escapeIndices))
-	for indexType, index := range [][][]int{colorIndices, regionIndices, escapeIndices} {
-		for _, tag := range index {
-			allIndices = append(allIndices, [3]int{tag[0], tag[1], indexType})
-		}
+	var allIndices [][]int
+	if findColors && findRegions {
+		allIndices = colorIndices
+		allIndices = make([][]int, len(colorIndices)+len(regionIndices))
+		copy(allIndices, colorIndices)
+		copy(allIndices[len(colorIndices):], regionIndices)
+		sort.Slice(allIndices, func(i int, j int) bool {
+			return allIndices[i][0] < allIndices[j][0]
+		})
+	} else if findColors {
+		allIndices = colorIndices
+	} else {
+		allIndices = regionIndices
 	}
-	sort.Slice(allIndices, func(i int, j int) bool {
-		return allIndices[i][0] < allIndices[j][0]
-	})
 
 	// Remove the tags from the original string.
 	var from int
 	buf := make([]byte, 0, len(text))
 	for _, indices := range allIndices {
-		if indices[2] == 2 { // Escape sequences are not simply removed.
-			buf = append(buf, []byte(text[from:indices[1]-2])...)
-			buf = append(buf, ']')
-			from = indices[1]
-		} else {
-			buf = append(buf, []byte(text[from:indices[0]])...)
-			from = indices[1]
-		}
+		buf = append(buf, []byte(text[from:indices[0]])...)
+		from = indices[1]
 	}
 	buf = append(buf, text[from:]...)
-	stripped = string(buf)
+
+	// Escape string.
+	stripped = string(escapePattern.ReplaceAll(buf, []byte("[$1$2]")))
 
 	// Get the width of the stripped string.
 	width = stringWidth(stripped)
@@ -226,20 +250,14 @@ func decomposeString(text string, findColors, findRegions bool) (colorIndices []
 // Returns the number of actual bytes of the text printed (including color tags)
 // and the actual width used for the printed runes.
 func Print(screen tcell.Screen, text string, x, y, maxWidth, align int, color tcell.Color) (int, int) {
-	bytes, width, _, _ := printWithStyle(screen, text, x, y, 0, maxWidth, align, tcell.StyleDefault.Foreground(color), true)
-	return bytes, width
+	return printWithStyle(screen, text, x, y, maxWidth, align, tcell.StyleDefault.Foreground(color))
 }
 
 // printWithStyle works like Print() but it takes a style instead of just a
-// foreground color. The skipWidth parameter specifies the number of cells
-// skipped at the beginning of the text. It also returns the start and end index
-// (exclusively) of the text actually printed. If maintainBackground is "true",
-// The existing screen background is not changed (i.e. the style's background
-// color is ignored).
-func printWithStyle(screen tcell.Screen, text string, x, y, skipWidth, maxWidth, align int, style tcell.Style, maintainBackground bool) (int, int, int, int) {
-	totalWidth, totalHeight := screen.Size()
-	if maxWidth <= 0 || len(text) == 0 || y < 0 || y >= totalHeight {
-		return 0, 0, 0, 0
+// foreground color.
+func printWithStyle(screen tcell.Screen, text string, x, y, maxWidth, align int, style tcell.Style) (int, int) {
+	if maxWidth <= 0 || len(text) == 0 {
+		return 0, 0
 	}
 
 	// Decompose the text.
@@ -247,21 +265,21 @@ func printWithStyle(screen tcell.Screen, text string, x, y, skipWidth, maxWidth,
 
 	// We want to reduce all alignments to AlignLeft.
 	if align == AlignRight {
-		if strippedWidth-skipWidth <= maxWidth {
+		if strippedWidth <= maxWidth {
 			// There's enough space for the entire text.
-			return printWithStyle(screen, text, x+maxWidth-strippedWidth+skipWidth, y, skipWidth, maxWidth, AlignLeft, style, maintainBackground)
+			return printWithStyle(screen, text, x+maxWidth-strippedWidth, y, maxWidth, AlignLeft, style)
 		}
 		// Trim characters off the beginning.
 		var (
-			bytes, width, colorPos, escapePos, tagOffset, from, to int
-			foregroundColor, backgroundColor, attributes           string
+			bytes, width, colorPos, escapePos, tagOffset int
+			foregroundColor, backgroundColor, attributes string
 		)
-		originalStyle := style
+		_, originalBackground, _ := style.Decompose()
 		iterateString(strippedText, func(main rune, comb []rune, textPos, textWidth, screenPos, screenWidth int) bool {
 			// Update color/escape tag offset and style.
 			if colorPos < len(colorIndices) && textPos+tagOffset >= colorIndices[colorPos][0] && textPos+tagOffset < colorIndices[colorPos][1] {
 				foregroundColor, backgroundColor, attributes = styleFromTag(foregroundColor, backgroundColor, attributes, colors[colorPos])
-				style = overlayStyle(originalStyle, foregroundColor, backgroundColor, attributes)
+				style = overlayStyle(originalBackground, style, foregroundColor, backgroundColor, attributes)
 				tagOffset += colorIndices[colorPos][1] - colorIndices[colorPos][0]
 				colorPos++
 			}
@@ -269,7 +287,7 @@ func printWithStyle(screen tcell.Screen, text string, x, y, skipWidth, maxWidth,
 				tagOffset++
 				escapePos++
 			}
-			if strippedWidth-screenPos <= maxWidth {
+			if strippedWidth-screenPos < maxWidth {
 				// We chopped off enough.
 				if escapePos > 0 && textPos+tagOffset-1 >= escapeIndices[escapePos-1][0] && textPos+tagOffset-1 < escapeIndices[escapePos-1][1] {
 					// Unescape open escape sequences.
@@ -277,36 +295,29 @@ func printWithStyle(screen tcell.Screen, text string, x, y, skipWidth, maxWidth,
 					text = text[:escapeCharPos] + text[escapeCharPos+1:]
 				}
 				// Print and return.
-				bytes, width, from, to = printWithStyle(screen, text[textPos+tagOffset:], x, y, 0, maxWidth, AlignLeft, style, maintainBackground)
-				from += textPos + tagOffset
-				to += textPos + tagOffset
+				bytes, width = printWithStyle(screen, text[textPos+tagOffset:], x, y, maxWidth, AlignLeft, style)
 				return true
 			}
 			return false
 		})
-		return bytes, width, from, to
+		return bytes, width
 	} else if align == AlignCenter {
-		if strippedWidth-skipWidth == maxWidth {
+		if strippedWidth == maxWidth {
 			// Use the exact space.
-			return printWithStyle(screen, text, x, y, skipWidth, maxWidth, AlignLeft, style, maintainBackground)
-		} else if strippedWidth-skipWidth < maxWidth {
+			return printWithStyle(screen, text, x, y, maxWidth, AlignLeft, style)
+		} else if strippedWidth < maxWidth {
 			// We have more space than we need.
-			half := (maxWidth - strippedWidth + skipWidth) / 2
-			return printWithStyle(screen, text, x+half, y, skipWidth, maxWidth-half, AlignLeft, style, maintainBackground)
+			half := (maxWidth - strippedWidth) / 2
+			return printWithStyle(screen, text, x+half, y, maxWidth-half, AlignLeft, style)
 		} else {
 			// Chop off runes until we have a perfect fit.
 			var choppedLeft, choppedRight, leftIndex, rightIndex int
 			rightIndex = len(strippedText)
-			for rightIndex-1 > leftIndex && strippedWidth-skipWidth-choppedLeft-choppedRight > maxWidth {
-				if skipWidth > 0 || choppedLeft < choppedRight {
+			for rightIndex-1 > leftIndex && strippedWidth-choppedLeft-choppedRight > maxWidth {
+				if choppedLeft < choppedRight {
 					// Iterate on the left by one character.
 					iterateString(strippedText[leftIndex:], func(main rune, comb []rune, textPos, textWidth, screenPos, screenWidth int) bool {
-						if skipWidth > 0 {
-							skipWidth -= screenWidth
-							strippedWidth -= screenWidth
-						} else {
-							choppedLeft += screenWidth
-						}
+						choppedLeft += screenWidth
 						leftIndex += textWidth
 						return true
 					})
@@ -325,7 +336,7 @@ func printWithStyle(screen tcell.Screen, text string, x, y, skipWidth, maxWidth,
 				colorPos, escapePos, tagOffset               int
 				foregroundColor, backgroundColor, attributes string
 			)
-			originalStyle := style
+			_, originalBackground, _ := style.Decompose()
 			for index := range strippedText {
 				// We only need the offset of the left index.
 				if index > leftIndex {
@@ -342,7 +353,7 @@ func printWithStyle(screen tcell.Screen, text string, x, y, skipWidth, maxWidth,
 				if colorPos < len(colorIndices) && index+tagOffset >= colorIndices[colorPos][0] && index+tagOffset < colorIndices[colorPos][1] {
 					if index <= leftIndex {
 						foregroundColor, backgroundColor, attributes = styleFromTag(foregroundColor, backgroundColor, attributes, colors[colorPos])
-						style = overlayStyle(originalStyle, foregroundColor, backgroundColor, attributes)
+						style = overlayStyle(originalBackground, style, foregroundColor, backgroundColor, attributes)
 					}
 					tagOffset += colorIndices[colorPos][1] - colorIndices[colorPos][0]
 					colorPos++
@@ -352,29 +363,18 @@ func printWithStyle(screen tcell.Screen, text string, x, y, skipWidth, maxWidth,
 					escapePos++
 				}
 			}
-			bytes, width, from, to := printWithStyle(screen, text[leftIndex+tagOffset:], x, y, 0, maxWidth, AlignLeft, style, maintainBackground)
-			from += leftIndex + tagOffset
-			to += leftIndex + tagOffset
-			return bytes, width, from, to
+			return printWithStyle(screen, text[leftIndex+tagOffset:], x, y, maxWidth, AlignLeft, style)
 		}
 	}
 
 	// Draw text.
 	var (
-		drawn, drawnWidth, colorPos, escapePos, tagOffset, from, to int
-		foregroundColor, backgroundColor, attributes                string
+		drawn, drawnWidth, colorPos, escapePos, tagOffset int
+		foregroundColor, backgroundColor, attributes      string
 	)
 	iterateString(strippedText, func(main rune, comb []rune, textPos, length, screenPos, screenWidth int) bool {
-		// Skip character if necessary.
-		if skipWidth > 0 {
-			skipWidth -= screenWidth
-			from = textPos + length
-			to = from
-			return false
-		}
-
 		// Only continue if there is still space.
-		if drawnWidth+screenWidth > maxWidth || x+drawnWidth >= totalWidth {
+		if drawnWidth+screenWidth > maxWidth {
 			return true
 		}
 
@@ -393,18 +393,11 @@ func printWithStyle(screen tcell.Screen, text string, x, y, skipWidth, maxWidth,
 			}
 		}
 
-		// Memorize positions.
-		to = textPos + length
-
 		// Print the rune sequence.
 		finalX := x + drawnWidth
-		finalStyle := style
-		if maintainBackground {
-			_, _, existingStyle, _ := screen.GetContent(finalX, y)
-			_, background, _ := existingStyle.Decompose()
-			finalStyle = finalStyle.Background(background)
-		}
-		finalStyle = overlayStyle(finalStyle, foregroundColor, backgroundColor, attributes)
+		_, _, finalStyle, _ := screen.GetContent(finalX, y)
+		_, background, _ := finalStyle.Decompose()
+		finalStyle = overlayStyle(background, style, foregroundColor, backgroundColor, attributes)
 		for offset := screenWidth - 1; offset >= 0; offset-- {
 			// To avoid undesired effects, we populate all cells.
 			if offset == 0 {
@@ -421,7 +414,7 @@ func printWithStyle(screen tcell.Screen, text string, x, y, skipWidth, maxWidth,
 		return false
 	})
 
-	return drawn + tagOffset + len(escapeIndices), drawnWidth, from, to
+	return drawn + tagOffset + len(escapeIndices), drawnWidth
 }
 
 // PrintSimple prints white text to the screen at the given position.
@@ -643,16 +636,4 @@ func iterateStringReverse(text string, callback func(main rune, comb []rune, tex
 	}
 
 	return false
-}
-
-// stripTags strips colour tags from the given string. (Region tags are not
-// stripped.)
-func stripTags(text string) string {
-	stripped := colorPattern.ReplaceAllStringFunc(text, func(match string) string {
-		if len(match) > 2 {
-			return ""
-		}
-		return match
-	})
-	return escapePattern.ReplaceAllString(stripped, `[$1$2]`)
 }

@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
+	tcell "github.com/gdamore/tcell/v2"
+	"github.com/yellowsink/gord/tview"
 )
 
 const textView1 = `[green]func[white] [yellow]main[white]() {
@@ -45,18 +45,9 @@ func TextView1(nextSlide func()) (title string, content tview.Primitive) {
 	go func() {
 		var n int
 		for {
-			if textView.HasFocus() {
-				n++
-				if n > 512 {
-					n = 1
-					textView.SetText("")
-				}
-
-				fmt.Fprintf(textView, "%d ", n)
-				time.Sleep(200 * time.Millisecond)
-			} else {
-				time.Sleep(time.Second)
-			}
+			n++
+			fmt.Fprintf(textView, "%d ", n)
+			time.Sleep(200 * time.Millisecond)
 		}
 	}()
 	textView.SetBorder(true).SetTitle("TextView implements io.Writer")
@@ -68,8 +59,8 @@ const textView2 = `[green]package[white] main
 [green]import[white] (
     [red]"strconv"[white]
 
-    [red]"github.com/gdamore/tcell/v2"[white]
-    [red]"github.com/rivo/tview"[white]
+    [red]tcell "github.com/gdamore/tcell/v2"[white]
+    [red]"github.com/yellowsink/gord/tview"[white]
 )
 
 [green]func[white] [yellow]main[white]() {
