@@ -189,6 +189,7 @@ func (f *Flex) Draw(screen tcell.Screen) bool {
 
 		if item.Item != nil {
 			if item.Item.GetFocusable().HasFocus() {
+				//goland:noinspection GoDeferInLoop
 				defer item.Item.Draw(screen)
 			} else {
 				item.Item.Draw(screen)

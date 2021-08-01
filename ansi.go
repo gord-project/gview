@@ -231,6 +231,7 @@ func (a *ansi) Write(text []byte) (int, error) {
 
 // TranslateANSI replaces ANSI escape sequences found in the provided string
 // with tview's color tags and returns the resulting string.
+//goland:noinspection GoUnusedExportedFunction
 func TranslateANSI(text string) string {
 	var buffer bytes.Buffer
 	writer := ANSIWriter(&buffer)

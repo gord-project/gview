@@ -619,6 +619,7 @@ func (g *Grid) Draw(screen tcell.Screen) bool {
 
 		// Draw primitive.
 		if item == focus {
+			//goland:noinspection GoDeferInLoop
 			defer primitive.Draw(screen)
 		} else {
 			primitive.Draw(screen)

@@ -9,10 +9,10 @@ type Primitive interface {
 	// (They will need to keep track of this themselves.)
 	Draw(screen tcell.Screen) bool
 
-	// Sets whether the primitive should be drawn onto the screen.
+	// SetVisible Sets whether the primitive should be drawn onto the screen.
 	SetVisible(bool)
 
-	// Gets whether the primitive should be drawn onto the screen.
+	// IsVisible Gets whether the primitive should be drawn onto the screen.
 	IsVisible() bool
 
 	// GetRect returns the current position of the primitive, x, y, width, and
@@ -78,6 +78,7 @@ type InputHandlerFunc func(*tcell.EventKey, func(p Primitive)) *tcell.EventKey
 // to the currently focused component.
 type FocusDirection int
 
+//goland:noinspection GoUnusedConst
 const (
 	Up FocusDirection = iota
 	Down

@@ -507,6 +507,7 @@ func (f *Form) Draw(screen tcell.Screen) bool {
 
 		// Draw items with focus last (in case of overlaps).
 		if item.GetFocusable().HasFocus() {
+			//goland:noinspection GoDeferInLoop
 			defer item.Draw(screen)
 		} else {
 			item.Draw(screen)

@@ -6,11 +6,13 @@ import "github.com/gdamore/tcell/v2"
 //
 // Named like the unicode characters, 'Semigraphics'-prefix used if unicode block
 // isn't prefixed itself.
+
+//goland:noinspection GoUnusedConst
 const (
-	// Block: General Punctation U+2000-U+206F (http://unicode.org/charts/PDF/U2000.pdf)
+	// SemigraphicsHorizontalEllipsis is Block: General Punctation U+2000-U+206F (http://unicode.org/charts/PDF/U2000.pdf)
 	SemigraphicsHorizontalEllipsis rune = '\u2026' // …
 
-	// Block: Box Drawing U+2500-U+257F (http://unicode.org/charts/PDF/U2500.pdf)
+	// BoxDrawingsLightHorizontal is Block: Box Drawing U+2500-U+257F (http://unicode.org/charts/PDF/U2500.pdf)
 	BoxDrawingsLightHorizontal                    rune = '\u2500' // ─
 	BoxDrawingsHeavyHorizontal                    rune = '\u2501' // ━
 	BoxDrawingsLightVertical                      rune = '\u2502' // │

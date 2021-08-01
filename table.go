@@ -906,6 +906,7 @@ ColumnLoop:
 		entries := cellsByBackgroundColor[bgColor]
 		for _, cell := range entries {
 			if cell.selected {
+				//goland:noinspection GoDeferInLoop
 				defer colorBackground(cell.x, cell.y, cell.w, cell.h, bgColor, cell.text, 0, true)
 			} else {
 				colorBackground(cell.x, cell.y, cell.w, cell.h, bgColor, tcell.ColorDefault, 0, false)

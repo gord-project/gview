@@ -33,11 +33,11 @@ func checkVT() bool {
 
 // Common regular expressions.
 var (
-	colorPattern     = regexp.MustCompile(`\[([a-zA-Z]+|#[0-9a-zA-Z]{6}|\-)?(:([a-zA-Z]+|#[0-9a-zA-Z]{6}|\-)?(:([lbdru]+|\-)?)?)?\]`)
-	regionPattern    = regexp.MustCompile(`\["([a-zA-Z0-9_,;: \-\.]*)"\]`)
-	escapePattern    = regexp.MustCompile(`\[([a-zA-Z0-9_,;: \-\."#]+)\[(\[*)\]`)
-	nonEscapePattern = regexp.MustCompile(`(\[[a-zA-Z0-9_,;: \-\."#]+\[*)\]`)
-	boundaryPattern  = regexp.MustCompile(`(([,\.\-:;!\?&#+]|\n)[ \t\f\r]*|([ \t\f\r]+))`)
+	colorPattern     = regexp.MustCompile(`\[([a-zA-Z]+|#[0-9a-zA-Z]{6}|-)?(:([a-zA-Z]+|#[0-9a-zA-Z]{6}|-)?(:([lbdru]+|-)?)?)?]`)
+	regionPattern    = regexp.MustCompile(`\["([a-zA-Z0-9_,;: \-.]*)"]`)
+	escapePattern    = regexp.MustCompile(`\[([a-zA-Z0-9_,;: \-."#]+)\[(\[*)]`)
+	nonEscapePattern = regexp.MustCompile(`(\[[a-zA-Z0-9_,;: \-."#]+\[*)]`)
+	boundaryPattern  = regexp.MustCompile(`(([,.\-:;!?&#+]|\n)[ \t\f\r]*|([ \t\f\r]+))`)
 	spacePattern     = regexp.MustCompile(`\s+`)
 )
 
@@ -49,6 +49,7 @@ const (
 )
 
 // Predefined InputField acceptance functions.
+//goland:noinspection GoUnusedGlobalVariable,GoUnusedGlobalVariable
 var (
 	// InputFieldInteger accepts integers.
 	InputFieldInteger func(text string, ch rune) bool
@@ -418,6 +419,7 @@ func printWithStyle(screen tcell.Screen, text string, x, y, maxWidth, align int,
 }
 
 // PrintSimple prints white text to the screen at the given position.
+//goland:noinspection GoUnusedExportedFunction
 func PrintSimple(screen tcell.Screen, text string, x, y int) {
 	Print(screen, text, x, y, math.MaxInt32, AlignLeft, Styles.PrimaryTextColor)
 }

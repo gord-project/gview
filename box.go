@@ -533,6 +533,7 @@ func (b *Box) Draw(screen tcell.Screen) bool {
 }
 
 // Focus is called when this primitive receives focus.
+//goland:noinspection GoUnusedParameter
 func (b *Box) Focus(delegate func(p Primitive)) {
 	b.hasFocus = true
 	if b.onFocus != nil {

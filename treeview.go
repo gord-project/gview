@@ -836,6 +836,7 @@ func (t *TreeView) InputHandler() InputHandlerFunc {
 
 // DefaultInputHandler handles basic navigation and interaction with the
 // TreeView.
+//goland:noinspection GoUnusedParameter
 func (t *TreeView) DefaultInputHandler(event *tcell.EventKey, setFocus func(p Primitive)) *tcell.EventKey {
 	// Because the tree is flattened into a list only at drawing time, we also
 	// postpone the (selection) movement to drawing time.

@@ -1,5 +1,5 @@
 /*
-Package tview implements rich widgets for terminal based user interfaces. The
+Package gview implements rich widgets for terminal based user interfaces. The
 widgets provided with this package are useful for data exploration and data
 entry.
 
