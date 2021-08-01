@@ -1,4 +1,4 @@
-package tview
+package gview
 
 import (
 	"bytes"
@@ -8,9 +8,9 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	tcell "github.com/gdamore/tcell/v2"
-	colorful "github.com/lucasb-eyer/go-colorful"
-	runewidth "github.com/mattn/go-runewidth"
+	"github.com/gdamore/tcell/v2"
+	"github.com/lucasb-eyer/go-colorful"
+	"github.com/mattn/go-runewidth"
 )
 
 var (

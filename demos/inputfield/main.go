@@ -2,17 +2,17 @@
 package main
 
 import (
-	tcell "github.com/gdamore/tcell/v2"
-	"github.com/yellowsink/gord/tview"
+	"github.com/gdamore/tcell/v2"
+	"github.com/gord-project/gview"
 )
 
 func main() {
-	app := tview.NewApplication()
-	inputField := tview.NewInputField().
+	app := gview.NewApplication()
+	inputField := gview.NewInputField().
 		SetLabel("Enter a number: ").
 		SetPlaceholder("E.g. 1234").
 		SetFieldWidth(10).
-		SetAcceptanceFunc(tview.InputFieldInteger).
+		SetAcceptanceFunc(gview.InputFieldInteger).
 		SetDoneFunc(func(key tcell.Key) {
 			app.Stop()
 		})

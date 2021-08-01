@@ -1,8 +1,6 @@
-package tview
+package gview
 
-import (
-	tcell "github.com/gdamore/tcell/v2"
-)
+import "github.com/gdamore/tcell/v2"
 
 // DefaultFormFieldWidth is the default field screen width of form elements
 // whose field width is flexible (0). This is used in the Form class for

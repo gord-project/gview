@@ -1,21 +1,19 @@
 // Demo code for the Grid primitive.
 package main
 
-import (
-	"github.com/yellowsink/gord/tview"
-)
+import "github.com/gord-project/gview"
 
 func main() {
-	newPrimitive := func(text string) tview.Primitive {
-		return tview.NewTextView().
-			SetTextAlign(tview.AlignCenter).
+	newPrimitive := func(text string) gview.Primitive {
+		return gview.NewTextView().
+			SetTextAlign(gview.AlignCenter).
 			SetText(text)
 	}
 	menu := newPrimitive("Menu")
 	main := newPrimitive("Main content")
 	sideBar := newPrimitive("Side Bar")
 
-	grid := tview.NewGrid().
+	grid := gview.NewGrid().
 		SetRows(3, 0, 3).
 		SetColumns(30, 0, 30).
 		SetBorders(true).
@@ -32,7 +30,7 @@ func main() {
 		AddItem(main, 1, 1, 1, 1, 0, 100, false).
 		AddItem(sideBar, 1, 2, 1, 1, 0, 100, false)
 
-	if err := tview.NewApplication().SetRoot(grid, true).Run(); err != nil {
+	if err := gview.NewApplication().SetRoot(grid, true).Run(); err != nil {
 		panic(err)
 	}
 }

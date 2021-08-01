@@ -36,12 +36,12 @@ world!":
   package main
 
   import (
-  	"github.com/yellowsink/gord/tview"
+
   )
 
   func main() {
-  	box := tview.NewBox().SetBorder(true).SetTitle("Hello, world!")
-  	if err := tview.NewApplication().SetRoot(box, true).Run(); err != nil {
+  	box := gview.NewBox().SetBorder(true).SetTitle("Hello, world!")
+  	if err := gview.NewApplication().SetRoot(box, true).Run(); err != nil {
   		panic(err)
   	}
   }
@@ -177,4 +177,4 @@ and constants from that package (e.g. colors and keyboard values).
 
 This package does not process mouse input (yet).
 */
-package tview
+package gview

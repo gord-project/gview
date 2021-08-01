@@ -1,10 +1,10 @@
-package tview
+package gview
 
 import (
 	"fmt"
 	"strings"
 
-	tcell "github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2"
 )
 
 // listItem represents one item in a List.

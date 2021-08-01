@@ -2,16 +2,16 @@ package main
 
 import (
 	"fmt"
+	"github.com/gord-project/gview"
 	"strconv"
 	"time"
 
-	tcell "github.com/gdamore/tcell/v2"
-	"github.com/yellowsink/gord/tview"
+	"github.com/gdamore/tcell/v2"
 )
 
 const textView1 = `[green]func[white] [yellow]main[white]() {
-	app := tview.[yellow]NewApplication[white]()
-    textView := tview.[yellow]NewTextView[white]().
+	app := gview.[yellow]NewApplication[white]()
+    textView := gview.[yellow]NewTextView[white]().
         [yellow]SetTextColor[white](tcell.ColorYellow).
         [yellow]SetScrollable[white](false).
         [yellow]SetChangedFunc[white]([yellow]func[white]() {
@@ -30,8 +30,8 @@ const textView1 = `[green]func[white] [yellow]main[white]() {
 }`
 
 // TextView1 demonstrates the basic text view.
-func TextView1(nextSlide func()) (title string, content tview.Primitive) {
-	textView := tview.NewTextView().
+func TextView1(nextSlide func()) (title string, content gview.Primitive) {
+	textView := gview.NewTextView().
 		SetTextColor(tcell.ColorYellow).
 		SetScrollable(false).
 		SetDoneFunc(func(key tcell.Key) {
@@ -60,11 +60,11 @@ const textView2 = `[green]package[white] main
     [red]"strconv"[white]
 
     [red]tcell "github.com/gdamore/tcell/v2"[white]
-    [red]"github.com/yellowsink/gord/tview"[white]
+    [red][white]
 )
 
 [green]func[white] [yellow]main[white]() {
-    ["0"]textView[""] := tview.[yellow]NewTextView[white]()
+    ["0"]textView[""] := gview.[yellow]NewTextView[white]()
     ["1"]textView[""].[yellow]SetDynamicColors[white](true).
         [yellow]SetWrap[white](false).
         [yellow]SetRegions[white](true).
@@ -96,19 +96,19 @@ const textView2 = `[green]package[white] main
             }
         })
     fmt.[yellow]Fprint[white](["7"]textView[""], content)
-    tview.[yellow]NewApplication[white]().
+    gview.[yellow]NewApplication[white]().
         [yellow]SetRoot[white](["8"]textView[""], true).
         [yellow]Run[white]()
 }`
 
 // TextView2 demonstrates the extended text view.
-func TextView2(nextSlide func()) (title string, content tview.Primitive) {
-	codeView := tview.NewTextView().
+func TextView2(nextSlide func()) (title string, content gview.Primitive) {
+	codeView := gview.NewTextView().
 		SetWrap(false)
 	fmt.Fprint(codeView, textView2)
 	codeView.SetBorder(true).SetTitle("Buffer content")
 
-	textView := tview.NewTextView()
+	textView := gview.NewTextView()
 	textView.SetDynamicColors(true).
 		SetWrap(false).
 		SetRegions(true).
@@ -145,7 +145,7 @@ func TextView2(nextSlide func()) (title string, content tview.Primitive) {
 		})
 	fmt.Fprint(textView, textView2)
 	textView.SetBorder(true).SetTitle("TextView output")
-	return "Text 2", tview.NewFlex().
+	return "Text 2", gview.NewFlex().
 		AddItem(textView, 0, 1, true).
 		AddItem(codeView, 0, 1, false)
 }

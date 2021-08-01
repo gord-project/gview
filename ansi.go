@@ -1,4 +1,4 @@
-package tview
+package gview
 
 import (
 	"bytes"

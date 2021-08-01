@@ -1,10 +1,10 @@
-package tview
+package gview
 
 import (
 	"sort"
 
-	tcell "github.com/gdamore/tcell/v2"
-	colorful "github.com/lucasb-eyer/go-colorful"
+	"github.com/gdamore/tcell/v2"
+	"github.com/lucasb-eyer/go-colorful"
 )
 
 // TableCell represents one cell inside a Table. You can instantiate this type

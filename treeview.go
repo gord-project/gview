@@ -1,11 +1,11 @@
-package tview
+package gview
 
 import (
 	"sort"
 	"strings"
 	"time"
 
-	tcell "github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2"
 )
 
 // Tree navigation events.

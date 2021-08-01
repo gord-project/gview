@@ -1,9 +1,9 @@
-package tview
+package gview
 
 import (
 	"strings"
 
-	tcell "github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2"
 )
 
 // dropDownOption is one option that can be selected in a drop-down primitive.

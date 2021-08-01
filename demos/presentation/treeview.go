@@ -1,45 +1,45 @@
 package main
 
 import (
+	"github.com/gord-project/gview"
 	"strings"
 
-	tcell "github.com/gdamore/tcell/v2"
-	"github.com/yellowsink/gord/tview"
+	"github.com/gdamore/tcell/v2"
 )
 
 const treeAllCode = `[green]package[white] main
 
-[green]import[white] [red]"github.com/yellowsink/gord/tview"[white]
+[green]import[white] [red][white]
 
 [green]func[white] [yellow]main[white]() {
 	$$$
 
-	root := tview.[yellow]NewTreeNode[white]([red]"Root"[white]).
-		[yellow]AddChild[white](tview.[yellow]NewTreeNode[white]([red]"First child"[white]).
-			[yellow]AddChild[white](tview.[yellow]NewTreeNode[white]([red]"Grandchild A"[white])).
-			[yellow]AddChild[white](tview.[yellow]NewTreeNode[white]([red]"Grandchild B"[white]))).
-		[yellow]AddChild[white](tview.[yellow]NewTreeNode[white]([red]"Second child"[white]).
-			[yellow]AddChild[white](tview.[yellow]NewTreeNode[white]([red]"Grandchild C"[white])).
-			[yellow]AddChild[white](tview.[yellow]NewTreeNode[white]([red]"Grandchild D"[white]))).
-		[yellow]AddChild[white](tview.[yellow]NewTreeNode[white]([red]"Third child"[white]))
+	root := gview.[yellow]NewTreeNode[white]([red]"Root"[white]).
+		[yellow]AddChild[white](gview.[yellow]NewTreeNode[white]([red]"First child"[white]).
+			[yellow]AddChild[white](gview.[yellow]NewTreeNode[white]([red]"Grandchild A"[white])).
+			[yellow]AddChild[white](gview.[yellow]NewTreeNode[white]([red]"Grandchild B"[white]))).
+		[yellow]AddChild[white](gview.[yellow]NewTreeNode[white]([red]"Second child"[white]).
+			[yellow]AddChild[white](gview.[yellow]NewTreeNode[white]([red]"Grandchild C"[white])).
+			[yellow]AddChild[white](gview.[yellow]NewTreeNode[white]([red]"Grandchild D"[white]))).
+		[yellow]AddChild[white](gview.[yellow]NewTreeNode[white]([red]"Third child"[white]))
 
 	tree.[yellow]SetRoot[white](root).
 		[yellow]SetCurrentNode[white](root)
 
-	tview.[yellow]NewApplication[white]().
+	gview.[yellow]NewApplication[white]().
 		[yellow]SetRoot[white](tree, true).
 		[yellow]Run[white]()
 }`
 
-const treeBasicCode = `tree := tview.[yellow]NewTreeView[white]()`
+const treeBasicCode = `tree := gview.[yellow]NewTreeView[white]()`
 
-const treeTopLevelCode = `tree := tview.[yellow]NewTreeView[white]().
+const treeTopLevelCode = `tree := gview.[yellow]NewTreeView[white]().
 		[yellow]SetTopLevel[white]([red]1[white])`
 
-const treeAlignCode = `tree := tview.[yellow]NewTreeView[white]().
+const treeAlignCode = `tree := gview.[yellow]NewTreeView[white]().
 		[yellow]SetAlign[white](true)`
 
-const treePrefixCode = `tree := tview.[yellow]NewTreeView[white]().
+const treePrefixCode = `tree := gview.[yellow]NewTreeView[white]().
 		[yellow]SetGraphics[white](false).
 		[yellow]SetTopLevel[white]([red]1[white]).
 		[yellow]SetPrefixes[white]([][green]string[white]{
@@ -56,9 +56,9 @@ type node struct {
 }
 
 var (
-	tree          = tview.NewTreeView()
+	tree          = gview.NewTreeView()
 	treeNextSlide func()
-	treeCode      = tview.NewTextView().SetWrap(false).SetDynamicColors(true)
+	treeCode      = gview.NewTextView().SetWrap(false).SetDynamicColors(true)
 )
 
 var rootNode = &node{
@@ -106,15 +106,15 @@ var rootNode = &node{
 	}}
 
 // TreeView demonstrates the tree view.
-func TreeView(nextSlide func()) (title string, content tview.Primitive) {
+func TreeView(nextSlide func()) (title string, content gview.Primitive) {
 	treeNextSlide = nextSlide
 	tree.SetBorder(true).
 		SetTitle("TreeView")
 
 	// Add nodes.
-	var add func(target *node) *tview.TreeNode
-	add = func(target *node) *tview.TreeNode {
-		node := tview.NewTreeNode(target.text).
+	var add func(target *node) *gview.TreeNode
+	add = func(target *node) *gview.TreeNode {
+		node := gview.NewTreeNode(target.text).
 			SetSelectable(target.expand || target.selected != nil).
 			SetExpanded(target == rootNode).
 			SetReference(target)
@@ -131,7 +131,7 @@ func TreeView(nextSlide func()) (title string, content tview.Primitive) {
 	root := add(rootNode)
 	tree.SetRoot(root).
 		SetCurrentNode(root).
-		SetSelectedFunc(func(n *tview.TreeNode) {
+		SetSelectedFunc(func(n *gview.TreeNode) {
 			original := n.GetReference().(*node)
 			if original.expand {
 				n.SetExpanded(!n.IsExpanded())
@@ -143,7 +143,7 @@ func TreeView(nextSlide func()) (title string, content tview.Primitive) {
 	treeCode.SetText(strings.Replace(treeAllCode, "$$$", treeBasicCode, -1)).
 		SetBorderPadding(1, 1, 2, 0)
 
-	return "Tree", tview.NewFlex().
+	return "Tree", gview.NewFlex().
 		AddItem(tree, 0, 1, true).
 		AddItem(treeCode, codeWidth, 1, false)
 }

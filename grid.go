@@ -1,9 +1,9 @@
-package tview
+package gview
 
 import (
 	"math"
 
-	tcell "github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2"
 )
 
 // gridItem represents one primitive and its possible position on a grid.
@@ -65,7 +65,7 @@ type Grid struct {
 // their background unchanged. To clear a Grid's background before any items are
 // drawn, set it to the desired color:
 //
-//   grid.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+//   grid.SetBackgroundColor(gview.Styles.PrimitiveBackgroundColor)
 func NewGrid() *Grid {
 	g := &Grid{
 		Box:          NewBox(),

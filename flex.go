@@ -1,8 +1,6 @@
-package tview
+package gview
 
-import (
-	tcell "github.com/gdamore/tcell/v2"
-)
+import "github.com/gdamore/tcell/v2"
 
 // Configuration values.
 const (
@@ -47,7 +45,7 @@ type Flex struct {
 // To clear a Flex's background before any items are drawn, set it to the
 // desired color:
 //
-//   flex.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+//   flex.SetBackgroundColor(gview.Styles.PrimitiveBackgroundColor)
 func NewFlex() *Flex {
 	f := &Flex{
 		Box:       NewBox().SetBackgroundColor(tcell.ColorDefault),

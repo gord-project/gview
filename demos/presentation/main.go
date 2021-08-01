@@ -1,5 +1,5 @@
 /*
-A presentation of the tview package, implemented with tview.
+A presentation of the tview package, implemented with gview.
 
 Navigation
 
@@ -14,19 +14,19 @@ package main
 
 import (
 	"fmt"
+	"github.com/gord-project/gview"
 	"strconv"
 
-	tcell "github.com/gdamore/tcell/v2"
-	"github.com/yellowsink/gord/tview"
+	"github.com/gdamore/tcell/v2"
 )
 
 // Slide is a function which returns the slide's main primitive and its title.
 // It receives a "nextSlide" function which can be called to advance the
 // presentation to the next slide.
-type Slide func(nextSlide func()) (title string, content tview.Primitive)
+type Slide func(nextSlide func()) (title string, content gview.Primitive)
 
 // The application.
-var app = tview.NewApplication()
+var app = gview.NewApplication()
 
 // Starting point for the presentation.
 func main() {
@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// The bottom row has some info on where we are.
-	info := tview.NewTextView().
+	info := gview.NewTextView().
 		SetDynamicColors(true).
 		SetRegions(true).
 		SetWrap(false)
@@ -56,7 +56,7 @@ func main() {
 	// Create the pages for all slides.
 	currentSlide := 0
 	info.Highlight(strconv.Itoa(currentSlide))
-	pages := tview.NewPages()
+	pages := gview.NewPages()
 	previousSlide := func() {
 		currentSlide = (currentSlide - 1 + len(slides)) % len(slides)
 		info.Highlight(strconv.Itoa(currentSlide)).
@@ -76,8 +76,8 @@ func main() {
 	}
 
 	// Create the main layout.
-	layout := tview.NewFlex().
-		SetDirection(tview.FlexRow).
+	layout := gview.NewFlex().
+		SetDirection(gview.FlexRow).
 		AddItem(pages, 0, 1, true).
 		AddItem(info, 1, 1, false)
 

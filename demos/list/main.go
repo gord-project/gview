@@ -1,13 +1,11 @@
 // Demo code for the List primitive.
 package main
 
-import (
-	"github.com/yellowsink/gord/tview"
-)
+import "github.com/gord-project/gview"
 
 func main() {
-	app := tview.NewApplication()
-	list := tview.NewList().
+	app := gview.NewApplication()
+	list := gview.NewList().
 		AddItem("List item 1", "Some explanatory text", 'a', nil).
 		AddItem("List item 2", "Some explanatory text", 'b', nil).
 		AddItem("List item 3", "Some explanatory text", 'c', nil).

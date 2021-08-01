@@ -1,15 +1,15 @@
 package main
 
 import (
-	tcell "github.com/gdamore/tcell/v2"
-	"github.com/yellowsink/gord/tview"
+	"github.com/gdamore/tcell/v2"
+	"github.com/gord-project/gview"
 )
 
 // Flex demonstrates flexbox layout.
-func Flex(nextSlide func()) (title string, content tview.Primitive) {
+func Flex(nextSlide func()) (title string, content gview.Primitive) {
 	modalShown := false
-	pages := tview.NewPages()
-	textView := tview.NewTextView().
+	pages := gview.NewPages()
+	textView := gview.NewTextView().
 		SetDoneFunc(func(key tcell.Key) {
 			if modalShown {
 				nextSlide()
@@ -20,15 +20,15 @@ func Flex(nextSlide func()) (title string, content tview.Primitive) {
 			}
 		})
 	textView.SetBorder(true).SetTitle("Flexible width, twice of middle column")
-	flex := tview.NewFlex().
+	flex := gview.NewFlex().
 		AddItem(textView, 0, 2, true).
-		AddItem(tview.NewFlex().
-			SetDirection(tview.FlexRow).
-			AddItem(tview.NewBox().SetBorder(true).SetTitle("Flexible width"), 0, 1, false).
-			AddItem(tview.NewBox().SetBorder(true).SetTitle("Fixed height"), 15, 1, false).
-			AddItem(tview.NewBox().SetBorder(true).SetTitle("Flexible height"), 0, 1, false), 0, 1, false).
-		AddItem(tview.NewBox().SetBorder(true).SetTitle("Fixed width"), 30, 1, false)
-	modal := tview.NewModal().
+		AddItem(gview.NewFlex().
+			SetDirection(gview.FlexRow).
+			AddItem(gview.NewBox().SetBorder(true).SetTitle("Flexible width"), 0, 1, false).
+			AddItem(gview.NewBox().SetBorder(true).SetTitle("Fixed height"), 15, 1, false).
+			AddItem(gview.NewBox().SetBorder(true).SetTitle("Flexible height"), 0, 1, false), 0, 1, false).
+		AddItem(gview.NewBox().SetBorder(true).SetTitle("Fixed width"), 30, 1, false)
+	modal := gview.NewModal().
 		SetText("Resize the window to see the effect of the flexbox parameters").
 		AddButtons([]string{"Ok"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		pages.HidePage("modal")

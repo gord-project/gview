@@ -1,8 +1,6 @@
-package tview
+package gview
 
-import (
-	tcell "github.com/gdamore/tcell/v2"
-)
+import "github.com/gdamore/tcell/v2"
 
 // Box implements Primitive with a background and optional elements such as a
 // border and a title. Most subclasses keep their content contained in the box

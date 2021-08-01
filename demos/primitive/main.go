@@ -3,14 +3,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/gord-project/gview"
 
-	tcell "github.com/gdamore/tcell/v2"
-	"github.com/yellowsink/gord/tview"
+	"github.com/gdamore/tcell/v2"
 )
 
 // RadioButtons implements a simple primitive for radio button selections.
 type RadioButtons struct {
-	*tview.Box
+	*gview.Box
 	options       []string
 	currentOption int
 }
@@ -18,7 +18,7 @@ type RadioButtons struct {
 // NewRadioButtons returns a new radio button primitive.
 func NewRadioButtons(options []string) *RadioButtons {
 	return &RadioButtons{
-		Box:     tview.NewBox(),
+		Box:     gview.NewBox(),
 		options: options,
 	}
 }
@@ -41,15 +41,15 @@ func (r *RadioButtons) Draw(screen tcell.Screen) bool {
 			radioButton = "\u25c9" // Checked.
 		}
 		line := fmt.Sprintf(`%s[white]  %s`, radioButton, option)
-		tview.Print(screen, line, x, y+index, width, tview.AlignLeft, tcell.ColorYellow)
+		gview.Print(screen, line, x, y+index, width, gview.AlignLeft, tcell.ColorYellow)
 	}
 
 	return true
 }
 
 // InputHandler returns the handler for this primitive.
-func (r *RadioButtons) InputHandler() tview.InputHandlerFunc {
-	return r.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p tview.Primitive)) *tcell.EventKey {
+func (r *RadioButtons) InputHandler() gview.InputHandlerFunc {
+	return r.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p gview.Primitive)) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyUp:
 			r.currentOption--
@@ -74,7 +74,7 @@ func main() {
 	radioButtons.SetBorder(true).
 		SetTitle("Radio Button Demo").
 		SetRect(0, 0, 30, 5)
-	if err := tview.NewApplication().SetRoot(radioButtons, false).Run(); err != nil {
+	if err := gview.NewApplication().SetRoot(radioButtons, false).Run(); err != nil {
 		panic(err)
 	}
 }

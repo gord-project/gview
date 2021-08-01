@@ -1,8 +1,6 @@
-package tview
+package gview
 
-import (
-	tcell "github.com/gdamore/tcell/v2"
-)
+import "github.com/gdamore/tcell/v2"
 
 // frameText holds information about a line of text shown in the frame.
 type frameText struct {

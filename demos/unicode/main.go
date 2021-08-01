@@ -3,29 +3,28 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/yellowsink/gord/tview"
+	"github.com/gord-project/gview"
 )
 
 func main() {
-	app := tview.NewApplication()
-	pages := tview.NewPages()
+	app := gview.NewApplication()
+	pages := gview.NewPages()
 
-	form := tview.NewForm()
+	form := gview.NewForm()
 	form.AddDropDown("称谓", []string{"先生", "女士", "博士", "老师", "师傅"}, 0, nil).
 		AddInputField("姓名", "", 20, nil, nil).
 		AddCheckbox("年龄 18+", false, nil).
 		AddPasswordField("密码", "", 10, '*', nil).
 		AddButton("保存", func() {
-			_, title := form.GetFormItem(0).(*tview.DropDown).GetCurrentOption()
-			userName := form.GetFormItem(1).(*tview.InputField).GetText()
+			_, title := form.GetFormItem(0).(*gview.DropDown).GetCurrentOption()
+			userName := form.GetFormItem(1).(*gview.InputField).GetText()
 
 			alert(pages, "alert-dialog", fmt.Sprintf("保存成功，%s %s！", userName, title))
 		}).
 		AddButton("退出", func() {
 			app.Stop()
 		})
-	form.SetBorder(true).SetTitle("输入一些内容").SetTitleAlign(tview.AlignLeft)
+	form.SetBorder(true).SetTitle("输入一些内容").SetTitleAlign(gview.AlignLeft)
 	pages.AddPage("base", form, true, true)
 
 	if err := app.SetRoot(pages, true).Run(); err != nil {
@@ -34,10 +33,10 @@ func main() {
 }
 
 // alert shows a confirmation dialog.
-func alert(pages *tview.Pages, id string, message string) *tview.Pages {
+func alert(pages *gview.Pages, id string, message string) *gview.Pages {
 	return pages.AddPage(
 		id,
-		tview.NewModal().
+		gview.NewModal().
 			SetText(message).
 			AddButtons([]string{"确定"}).
 			SetDoneFunc(func(buttonIndex int, buttonLabel string) {

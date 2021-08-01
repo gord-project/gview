@@ -1,9 +1,9 @@
-package tview
+package gview
 
 import (
 	"sync"
 
-	tcell "github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2"
 )
 
 // The size of the event/update/redraw channels.
@@ -18,7 +18,7 @@ const queueSize = 100
 // The following command displays a primitive p on the screen until Ctrl-C is
 // pressed:
 //
-//   if err := tview.NewApplication().SetRoot(p, true).Run(); err != nil {
+//   if err := gview.NewApplication().SetRoot(p, true).Run(); err != nil {
 //       panic(err)
 //   }
 type Application struct {

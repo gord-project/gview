@@ -1,6 +1,6 @@
-package tview
+package gview
 
-import tcell "github.com/gdamore/tcell/v2"
+import "github.com/gdamore/tcell/v2"
 
 // MouseSupport defines wether a component supports accepting mouse events
 type MouseSupport interface {

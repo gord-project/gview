@@ -1,12 +1,12 @@
 package main
 
 import (
-	tcell "github.com/gdamore/tcell/v2"
-	"github.com/yellowsink/gord/tview"
+	"github.com/gdamore/tcell/v2"
+	"github.com/gord-project/gview"
 )
 
 func main() {
-	field := tview.NewInputField()
+	field := gview.NewInputField()
 	field.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyCtrlV {
 			field.Insert("Fotze")
@@ -15,6 +15,6 @@ func main() {
 
 		return event
 	})
-	app := tview.NewApplication().SetRoot(field, true)
+	app := gview.NewApplication().SetRoot(field, true)
 	app.Run()
 }

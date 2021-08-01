@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/yellowsink/gord/tview"
+	"github.com/gord-project/gview"
 	"strings"
 )
 
 func main() {
-	app := tview.NewApplication()
-	textView := tview.NewTextView().
+	app := gview.NewApplication()
+	textView := gview.NewTextView().
 		SetWordWrap(true).
 		SetChangedFunc(func() {
 			app.Draw()
@@ -18,23 +18,23 @@ func main() {
 		SetBorderSides(true, true, true, true).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 0, 10)
-	flex := tview.NewFlex()
-	flex.SetDirection(tview.FlexRow)
-	flex.AddItem(tview.NewTextView(), 1, -1, false)
+	flex := gview.NewFlex()
+	flex.SetDirection(gview.FlexRow)
+	flex.AddItem(gview.NewTextView(), 1, -1, false)
 	flex.AddItem(textView, 10, -1, false)
 
-	root := tview.NewTreeNode("Root")
-	root.AddChild(tview.NewTreeNode("A"))
-	root.AddChild(tview.NewTreeNode("B"))
-	root.AddChild(tview.NewTreeNode("C"))
-	root.AddChild(tview.NewTreeNode("D"))
-	root.AddChild(tview.NewTreeNode("E"))
-	root.AddChild(tview.NewTreeNode("F"))
-	tree := tview.NewTreeView().SetRoot(root)
+	root := gview.NewTreeNode("Root")
+	root.AddChild(gview.NewTreeNode("A"))
+	root.AddChild(gview.NewTreeNode("B"))
+	root.AddChild(gview.NewTreeNode("C"))
+	root.AddChild(gview.NewTreeNode("D"))
+	root.AddChild(gview.NewTreeNode("E"))
+	root.AddChild(gview.NewTreeNode("F"))
+	tree := gview.NewTreeView().SetRoot(root)
 	tree.SetBorder(true).SetIndicateOverflow(true)
 	flex.AddItem(tree, 6, -1, false)
 
-	list := tview.NewList()
+	list := gview.NewList()
 	list.AddItem("A", "", 0, nil)
 	list.AddItem("B", "", 0, nil)
 	list.AddItem("C", "", 0, nil)

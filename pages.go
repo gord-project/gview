@@ -1,8 +1,6 @@
-package tview
+package gview
 
-import (
-	tcell "github.com/gdamore/tcell/v2"
-)
+import "github.com/gdamore/tcell/v2"
 
 // page represents one page of a Pages object.
 type page struct {

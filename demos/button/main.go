@@ -1,11 +1,11 @@
 // Demo code for the Button primitive.
 package main
 
-import "github.com/yellowsink/gord/tview"
+import "github.com/gord-project/gview"
 
 func main() {
-	app := tview.NewApplication()
-	button := tview.NewButton("Hit Enter to close").SetSelectedFunc(func() {
+	app := gview.NewApplication()
+	button := gview.NewButton("Hit Enter to close").SetSelectedFunc(func() {
 		app.Stop()
 	})
 	button.SetBorder(true).SetRect(0, 0, 22, 3)

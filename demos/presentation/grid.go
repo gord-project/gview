@@ -1,18 +1,18 @@
 package main
 
 import (
-	tcell "github.com/gdamore/tcell/v2"
-	"github.com/yellowsink/gord/tview"
+	"github.com/gdamore/tcell/v2"
+	"github.com/gord-project/gview"
 )
 
 // Grid demonstrates the grid layout.
-func Grid(nextSlide func()) (title string, content tview.Primitive) {
+func Grid(nextSlide func()) (title string, content gview.Primitive) {
 	modalShown := false
-	pages := tview.NewPages()
+	pages := gview.NewPages()
 
-	newPrimitive := func(text string) tview.Primitive {
-		return tview.NewTextView().
-			SetTextAlign(tview.AlignCenter).
+	newPrimitive := func(text string) gview.Primitive {
+		return gview.NewTextView().
+			SetTextAlign(gview.AlignCenter).
 			SetText(text).
 			SetDoneFunc(func(key tcell.Key) {
 				if modalShown {
@@ -29,7 +29,7 @@ func Grid(nextSlide func()) (title string, content tview.Primitive) {
 	main := newPrimitive("Main content")
 	sideBar := newPrimitive("Side Bar")
 
-	grid := tview.NewGrid().
+	grid := gview.NewGrid().
 		SetRows(3, 0, 3).
 		SetColumns(0, -4, 0).
 		SetBorders(true).
@@ -46,7 +46,7 @@ func Grid(nextSlide func()) (title string, content tview.Primitive) {
 		AddItem(main, 1, 1, 1, 1, 0, 100, false).
 		AddItem(sideBar, 1, 2, 1, 1, 0, 100, false)
 
-	modal := tview.NewModal().
+	modal := gview.NewModal().
 		SetText("Resize the window to see how the grid layout adapts").
 		AddButtons([]string{"Ok"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		pages.HidePage("modal")

@@ -1,13 +1,11 @@
 // Demo code for the Form primitive.
 package main
 
-import (
-	"github.com/yellowsink/gord/tview"
-)
+import "github.com/gord-project/gview"
 
 func main() {
-	app := tview.NewApplication()
-	form := tview.NewForm().
+	app := gview.NewApplication()
+	form := gview.NewForm().
 		AddDropDown("Title", []string{"Mr.", "Ms.", "Mrs.", "Dr.", "Prof."}, 0, nil).
 		AddInputField("First name", "", 20, nil, nil).
 		AddInputField("Last name", "", 20, nil, nil).
@@ -17,7 +15,7 @@ func main() {
 		AddButton("Quit", func() {
 			app.Stop()
 		})
-	form.SetBorder(true).SetTitle("Enter some data").SetTitleAlign(tview.AlignLeft)
+	form.SetBorder(true).SetTitle("Enter some data").SetTitleAlign(gview.AlignLeft)
 	if err := app.SetRoot(form, true).Run(); err != nil {
 		panic(err)
 	}
